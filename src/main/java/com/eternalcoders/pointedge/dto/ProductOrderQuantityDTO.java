@@ -5,7 +5,7 @@ public interface ProductOrderQuantityDTO {
 
     String getProductName();
 
-    Double getPricePerUnit();
+    double getPricePerUnit();
 
-    Long getTotalQuantity();
+    long getTotalQuantity();
 }

@@ -1,6 +1,5 @@
 package com.eternalcoders.pointedge.controller;
 
-import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Product;
 import com.eternalcoders.pointedge.service.ProductService;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +9,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/products")
+@CrossOrigin(origins = "http://localhost:5173")
 public class ProductController {
     private final ProductService productService;
 
@@ -25,14 +25,5 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<Product> addProduct(@RequestBody Product product) {
         return ResponseEntity.status(201).body(productService.addProduct(product));
-    }
-
-    @GetMapping("/sales-quantities")
-    public ResponseEntity<List<ProductOrderQuantityDTO>> getFilteredProductOrderQuantities(
-            @RequestParam(required = false) Long brandId,
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String timeFilter
-    ) {
-        return ResponseEntity.ok(productService.getFilteredProductOrderQuantities(brandId, categoryId, timeFilter));
     }
 }

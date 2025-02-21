@@ -21,7 +21,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             "AND (:startDate IS NULL OR oi.order.orderDate BETWEEN :startDate AND :endDate) " +
             "GROUP BY oi.product.id, oi.product.name, oi.pricePerUnit " +
             "ORDER BY p.name ASC, MAX(oi.order.orderDate) DESC")
-    List<ProductOrderQuantityDTO> getProductOrderQuantities(
+    List<ProductOrderQuantityDTO> getTotalOrdersForProducts(
             @Param("brandId") Long brandId,
             @Param("categoryId") Long categoryId,
             @Param("startDate") LocalDateTime startDate,
