@@ -18,12 +18,21 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<Product>> getFilteredProducts(
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Boolean hidden
+    ) {
+        return ResponseEntity.ok(productService.getFilteredProducts(brandId, categoryId, hidden));
     }
 
     @PostMapping
     public ResponseEntity<Product> addProduct(@RequestBody Product product) {
         return ResponseEntity.status(201).body(productService.addProduct(product));
+    }
+
+    @PutMapping
+    public ResponseEntity<Product> updateProduct(@RequestBody Product product) {
+        return ResponseEntity.ok(productService.updateProduct(product));
     }
 }
