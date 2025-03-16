@@ -8,4 +8,6 @@ public interface ProductOrderQuantityDTO {
     double getPricePerUnit();
 
     long getTotalQuantity();
+
+    String getImageName();
 }

@@ -3,6 +3,7 @@ package com.eternalcoders.pointedge.controller;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.service.OrderService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
-@CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
     private final OrderService orderService;
 
@@ -25,7 +25,7 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<Order> addOrder(@RequestBody Order order) {
-        return ResponseEntity.status(201).body(orderService.addOrder(order));
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.addOrder(order));
     }
 
     @GetMapping("/summary")

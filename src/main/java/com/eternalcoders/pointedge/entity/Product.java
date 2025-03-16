@@ -20,9 +20,13 @@ public class Product {
 
     private String name;
 
+    private String barcode;
+
     private double price;
 
     private long stockQuantity;
+
+    private long minimumQuantity;
 
     private boolean hidden;
 
@@ -33,4 +37,6 @@ public class Product {
     @ManyToOne(optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    private String imageName;
 }

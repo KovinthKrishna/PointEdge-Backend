@@ -10,8 +10,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
-    @Query("SELECT oi.product.id AS productId, oi.product.name AS productName, " +
-            "oi.pricePerUnit AS pricePerUnit, SUM(oi.quantity) AS totalQuantity " +
+    @Query("SELECT oi.product.id AS productId, " +
+            "oi.product.name AS productName, " +
+            "oi.pricePerUnit AS pricePerUnit, " +
+            "SUM(oi.quantity) AS totalQuantity, " +
+            "oi.product.imageName AS imageName " +
             "FROM OrderItem oi " +
             "JOIN oi.product p " +
             "JOIN p.brand b " +
@@ -19,7 +22,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             "WHERE (:brandId IS NULL OR b.id = :brandId) " +
             "AND (:categoryId IS NULL OR c.id = :categoryId) " +
             "AND (:startDate IS NULL OR oi.order.orderDate BETWEEN :startDate AND :endDate) " +
-            "GROUP BY oi.product.id, oi.product.name, oi.pricePerUnit " +
+            "GROUP BY oi.product.id, oi.product.name, oi.pricePerUnit, oi.product.imageName " +
             "ORDER BY p.name ASC, MAX(oi.order.orderDate) DESC")
     List<ProductOrderQuantityDTO> getTotalOrdersForProducts(
             @Param("brandId") Long brandId,

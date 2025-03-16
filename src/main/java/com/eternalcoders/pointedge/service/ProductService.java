@@ -35,6 +35,8 @@ public class ProductService {
     }
 
     public Product updateProduct(Product product) {
+        productRepository.findById(product.getId()).ifPresent(existingProduct -> product.setImageName(existingProduct.getImageName()));
+
         persistNewBrandAndCategory(product);
 
         return productRepository.save(product);
