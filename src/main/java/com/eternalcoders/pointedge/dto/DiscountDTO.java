@@ -14,7 +14,7 @@ import com.eternalcoders.pointedge.entity.Discount.LoyaltyTier;
 @AllArgsConstructor
 public class DiscountDTO {
     
-    private Long id;
+    public Long id;
     
     private String name;
     
@@ -30,7 +30,7 @@ public class DiscountDTO {
     
     private LocalDateTime startDate;
     
-    private Boolean isActive;
+    private Boolean isActive ;
     
     private String duration;
 }
