@@ -10,8 +10,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoyaltyThresholdsDTO {
-    private double gold;
-    private double silver;
-    private double bronze;
-    private double points;
+    public double gold;
+    public double silver;
+    public double bronze;
+    public double points;
 }

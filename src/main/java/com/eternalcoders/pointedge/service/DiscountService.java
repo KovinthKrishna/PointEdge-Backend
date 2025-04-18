@@ -128,10 +128,10 @@ public class DiscountService {
     
     public LoyaltyThresholdsDTO updateLoyaltyThresholds(LoyaltyThresholdsDTO thresholdsDTO) {
         discountRepository.updateLoyaltyThresholds(
-            thresholdsDTO.getGold(),
-            thresholdsDTO.getSilver(),
-            thresholdsDTO.getBronze(),
-            thresholdsDTO.getPoints()
+            thresholdsDTO.gold,
+            thresholdsDTO.silver,
+            thresholdsDTO.bronze,
+            thresholdsDTO.points
         );
         return thresholdsDTO;
     }

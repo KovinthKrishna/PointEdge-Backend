@@ -44,7 +44,7 @@ public class DiscountController {
     public DiscountDTO updateDiscountDetails(
         @PathVariable Long id, 
         @RequestBody DiscountDTO discountDTO) {
-        discountDTO.setId(id); // Ensure ID from path is used
+        discountDTO.id = id; 
         return discountService.updateDiscount(discountDTO);
     }
     

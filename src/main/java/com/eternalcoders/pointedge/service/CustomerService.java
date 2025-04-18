@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -60,10 +61,13 @@ public class CustomerService {
         Customer existingCustomer = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found with id: " + id));
         
-        // Update customer fields
+        // Configure ModelMapper to skip ID during update
+        modelMapper.getConfiguration()
+            .setSkipNullEnabled(true)
+            .setMatchingStrategy(MatchingStrategies.STRICT);
+        
+        // Map all fields except ID
         modelMapper.map(customerDTO, existingCustomer);
-        // Ensure ID doesn't change
-        existingCustomer.setId(id);
         
         Customer updatedCustomer = customerRepository.save(existingCustomer);
         return modelMapper.map(updatedCustomer, CustomerDTO.class);
