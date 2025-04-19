@@ -73,4 +73,43 @@ public class CustomerService {
         return modelMapper.map(updatedCustomer, CustomerDTO.class);
     }
     
+    //////////////below methods for integration
+    // get customer by phone
+    public CustomerDTO getCustomerByPhoneNullable(String phone) {
+        Optional<Customer> customer = customerRepository.findByPhone(phone);
+        return customer.map(c -> modelMapper.map(c, CustomerDTO.class)).orElse(null);
+    }
+
+    public CustomerDTO updateCustomerPoints(String phone, Double points) {
+        // Find the customer first to ensure it exists
+        Customer existing = customerRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        // Create a custom repository method to update points directly in the database
+        // This is a new method we'll add to CustomerRepository interface
+        customerRepository.updatePointsByPhone(phone, points);
+        
+        // Fetch the updated customer from the database
+        Customer updated = customerRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Customer not found after update"));
+                
+        return modelMapper.map(updated, CustomerDTO.class);
+    }
+    
+    public CustomerDTO updateCustomerTier(String phone, Tier tier) {
+        // Find the customer first to ensure it exists
+        Customer existing = customerRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        // Create a custom repository method to update tier directly in the database
+        // This is a new method we'll add to CustomerRepository interface
+        customerRepository.updateTierByPhone(phone, tier);
+        
+        // Fetch the updated customer from the database
+        Customer updated = customerRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Customer not found after update"));
+                
+        return modelMapper.map(updated, CustomerDTO.class);
+    }
+
 }

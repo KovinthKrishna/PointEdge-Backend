@@ -1,17 +1,23 @@
 package com.eternalcoders.pointedge.controller;
 
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eternalcoders.pointedge.dto.DiscountDTO;
 import com.eternalcoders.pointedge.dto.LoyaltyThresholdsDTO;
+import com.eternalcoders.pointedge.entity.Discount;
 import com.eternalcoders.pointedge.entity.Discount.DiscountType;
 import com.eternalcoders.pointedge.service.DiscountService;
 
@@ -173,4 +179,177 @@ public class DiscountController {
     ) {
         return ResponseEntity.ok(discountService.updateLoyaltyThresholds(thresholdsDTO));
     }
+
+    // below methods for integration
+
+    // find active discounts for given id
+    //localhost:8080/api/v1/discount/active/item/3?loyaltyTier=GOLD
+    //localhost:8080/api/v1/discount/active/item/3
+    @GetMapping("/active/item/{itemId}")
+    public ResponseEntity<List<DiscountDTO>> getActiveItemDiscounts(
+            @PathVariable Long itemId,
+            @RequestParam(required = false) Discount.LoyaltyTier loyaltyTier) {
+        List<DiscountDTO> discounts = discountService.getActiveItemDiscounts(itemId, loyaltyTier);
+        return ResponseEntity.ok(discounts);
+    }
+
+    @GetMapping("/active/category/{categoryId}")
+    public ResponseEntity<List<DiscountDTO>> getActiveCategoryDiscounts(
+            @PathVariable Long categoryId,
+            @RequestParam(required = false) Discount.LoyaltyTier loyaltyTier) {
+        List<DiscountDTO> discounts = discountService.getActiveCategoryDiscounts(categoryId, loyaltyTier);
+        return ResponseEntity.ok(discounts);
+    }
+
+    @GetMapping("/active/loyalty/{tier}")
+    public ResponseEntity<List<DiscountDTO>> getActiveLoyaltyDiscounts(
+            @PathVariable Discount.LoyaltyTier tier) {
+        List<DiscountDTO> discounts = discountService.getActiveLoyaltyDiscounts(tier);
+        return ResponseEntity.ok(discounts);
+    }
+
+    // get price of an item by id
+    @GetMapping("/product-price/{itemId}")
+    public ResponseEntity<Map<String, Object>> getProductPrice(@PathVariable Long itemId) {
+        return discountService.getProductPriceById(itemId);
+    }
+
+    // method for calculate total  price without discounts
+    @PostMapping("/calculate-total")
+    public ResponseEntity<Map<String, Object>> calculateTotalAmount(@RequestBody Map<Long, Integer> itemQuantities) {
+        BigDecimal totalAmount = discountService.calculateTotalAmount(itemQuantities);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("total", totalAmount);
+        response.put("success", true);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    // get category ID of a product by product ID
+    @GetMapping("/product-category/{productId}")
+    public ResponseEntity<Map<String, Object>> getProductCategory(@PathVariable Long productId) {
+        return discountService.getCategoryIdByProductId(productId);
+    }
+
+    // get all applicable loyslty discounts for a given product ID and customer phone number
+    @PostMapping("/applicable-loyalty-discounts")
+    public ResponseEntity<Map<String, Object>> getApplicableLoyaltyDiscounts(
+        @RequestBody Map<String, Object> request) {
+        
+        String phone = (String) request.get("phone");
+        return discountService.getApplicableLoyaltyDiscounts(phone);
+    } 
+    
+    // get all applicable item discounts for a given product ID and customer phone number
+    @PostMapping("/applicable-item-discounts")
+    public ResponseEntity<Map<String, Object>> getApplicableItemDiscounts(
+        @RequestBody Map<String, Object> request) {
+        
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return discountService.getApplicableItemDiscounts(phone, items);
+    }
+
+    // get all applicable category discounts for a given product ID and customer phone number
+    @PostMapping("/applicable-category-discounts")
+    public ResponseEntity<Map<String, Object>> getApplicableCategoryDiscounts(
+        @RequestBody Map<String, Object> request) {
+        
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return discountService.getApplicableCategoryDiscounts(phone, items);
+    }
+
+    // get all applicable discounts for a given product ID and customer phone number
+
+    @PostMapping("/all-applicable-discounts")
+    public ResponseEntity<Map<String, Object>> getAllApplicableDiscounts(
+        @RequestBody Map<String, Object> request) {
+        
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return discountService.getAllApplicableDiscounts(phone, items);
+    }
+
+    /////////////////////////////////////// calculate total discounts
+    
 }

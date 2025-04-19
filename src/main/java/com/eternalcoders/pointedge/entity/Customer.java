@@ -48,4 +48,5 @@ public class Customer {
     @Enumerated(EnumType.STRING)
     @Column(name = "tier", nullable = false)
     private Tier tier;
+
 }

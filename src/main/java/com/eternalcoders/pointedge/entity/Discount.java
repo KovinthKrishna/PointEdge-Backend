@@ -20,6 +20,10 @@ public class Discount {
     
     @Column(name = "name", nullable = false)
     private String name;
+
+    public LoyaltyTier getLoyaltyType() {
+        return this.loyaltyType;
+    }    
     
     public enum DiscountType {
         ITEM,
@@ -52,7 +56,8 @@ public class Discount {
     public enum LoyaltyTier {
         GOLD,
         SILVER,
-        BRONZE
+        BRONZE,
+        NOTLOYALTY
     }
     
     @Enumerated(EnumType.STRING)
