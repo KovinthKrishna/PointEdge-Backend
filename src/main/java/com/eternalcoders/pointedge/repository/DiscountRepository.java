@@ -51,4 +51,62 @@ public interface DiscountRepository extends JpaRepository<Discount, Long> {
         @Param("points") double points
     );
 
+    // below methods for integration
+
+    @Query("SELECT d FROM Discount d WHERE " +
+           "d.item.id = :itemId AND " +
+           "d.isActive = true AND " +
+           "(:loyaltyTier IS NULL OR d.loyaltyType = :loyaltyTier)")
+    List<Discount> findActiveItemDiscounts(
+        @Param("itemId") Long itemId,
+        @Param("loyaltyTier") Discount.LoyaltyTier loyaltyTier);
+
+    @Query("SELECT d FROM Discount d WHERE " +
+           "d.category.id = :categoryId AND " +
+           "d.isActive = true AND " +
+           "(:loyaltyTier IS NULL OR d.loyaltyType = :loyaltyTier)")
+    List<Discount> findActiveCategoryDiscounts(
+        @Param("categoryId") Long categoryId,
+        @Param("loyaltyTier") Discount.LoyaltyTier loyaltyTier);
+
+    @Query("SELECT d FROM Discount d WHERE " +
+           "d.loyaltyType = :tier AND " +
+           "d.isActive = true")
+    List<Discount> findActiveLoyaltyDiscounts(
+        @Param("tier") Discount.LoyaltyTier tier);
+
+    // get price of an item by id
+    @Query("SELECT p.price FROM Product p WHERE p.id = :itemId")
+    Optional<Double> findProductPriceById(@Param("itemId") Long itemId);
+
+    // get category id by itemid
+    @Query("SELECT p.category.id FROM Product p WHERE p.id = :itemId")
+    Optional<Long> findCategoryIdByProductId(@Param("itemId") Long itemId);
+
+    // get customer loyalty type by phone
+    @Query(value = "SELECT tier FROM customers WHERE phone = :phoneNumber", nativeQuery = true)
+    Optional<Discount.LoyaltyTier> findCustomerLoyaltyTierByPhone(@Param("phoneNumber") String phoneNumber);
+
+    // get customer loyalty type by id
+    // @Query("SELECT c.loyaltyType FROM Customer c WHERE c.id = :customerId")
+    // Optional<Discount.LoyaltyTier> findCustomerLoyaltyTierById(@Param("customerId") Long customerId);
+
+    // get customer id by phone
+    @Query(value = "SELECT id FROM customers WHERE phone = :customerId", nativeQuery = true)
+    Optional<Long> findCustomerIdByPhone(@Param("customerId") String customerId);
+
+    // get all applicable loyslty discounts for a given product ID and customer phone number
+    @Query("SELECT d FROM Discount d WHERE " +
+       "d.type = 'LOYALTY' AND " +
+       "d.isActive = true AND " +
+       "d.loyaltyType = :tier")
+    List<Discount> findActiveLoyaltyDiscountsByTypeAndTier(@Param("tier") Discount.LoyaltyTier tier);
+ 
+    // get all applicable category discounts for a given product ID and customer phone number
+    
+    // get all applicable discounts for a given product ID and customer phone number
+
+    
+
+    
 }
