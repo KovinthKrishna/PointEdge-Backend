@@ -33,4 +33,21 @@ public class DiscountDTO {
     private Boolean isActive ;
     
     private String duration;
+
+    public Object getId() {
+        return id;
+    }
+    
+    public Object getPercentage() {
+        return percentage;
+    }
+    
+    public Object getAmount() {
+        return amount;
+    }
+
+    public void setItemId(Long itemId) {
+        this.itemId = itemId;
+    }
+    
 }
