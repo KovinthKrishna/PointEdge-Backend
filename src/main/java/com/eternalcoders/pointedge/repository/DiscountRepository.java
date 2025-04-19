@@ -1,5 +1,7 @@
 package com.eternalcoders.pointedge.repository;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.eternalcoders.pointedge.dto.CustomerDTO;
+import com.eternalcoders.pointedge.entity.Customer;
 import com.eternalcoders.pointedge.entity.Discount;
 import com.eternalcoders.pointedge.entity.Discount.DiscountType;
 import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
@@ -108,5 +112,15 @@ public interface DiscountRepository extends JpaRepository<Discount, Long> {
 
     
 
-    
+    // find items for given category
+    @Query("SELECT p.id, p.category.id FROM Product p WHERE p.id IN :itemIds")
+    List<Object[]> findCategoryIdsByItemIds(@Param("itemIds") Collection<Long> itemIds);
+
+    // find price for given item
+    @Query("SELECT p.price FROM Product p WHERE p.id = :itemId")
+    Optional<BigDecimal> findPriceByItemId(@Param("itemId") Long itemId);
+
+    // final return with discount amout and customer info
+    @Query("SELECT c FROM Customer c WHERE c.phone = :phone")
+    Optional<Customer> findCustomerByPhone(@Param("phone") String phone);
 }

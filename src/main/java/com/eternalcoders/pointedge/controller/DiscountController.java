@@ -352,4 +352,92 @@ public class DiscountController {
 
     /////////////////////////////////////// calculate total discounts
     
+
+    @PostMapping("/applicable-discount-ids")
+    public ResponseEntity<Map<String, Object>> getApplicableDiscountIds(
+        @RequestBody Map<String, Object> request) {
+        
+        try {
+            String phone = (String) request.get("phone");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+            
+            if (phone == null || itemsMap == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Both phone and items are required"
+                ));
+            }
+            
+            // Convert String keys to Long keys
+            Map<Long, Integer> items = new HashMap<>();
+            for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+                try {
+                    Long itemId = Long.parseLong(entry.getKey());
+                    Integer quantity = (entry.getValue() instanceof Integer) ? 
+                        (Integer) entry.getValue() : 
+                        Integer.parseInt(entry.getValue().toString());
+                    items.put(itemId, quantity);
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Invalid item ID or quantity format"
+                    ));
+                }
+            }
+            
+            return ResponseEntity.ok(discountService.getApplicableDiscountIds(phone, items));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "Error processing request: " + e.getMessage()
+            ));
+        }
+    }
+
+    // final return with discount amout and customer info
+
+    @PostMapping("/calculate-total-discount")
+    public ResponseEntity<Map<String, Object>> getFinalDiscountedOrderWithCustomerInfo(
+        @RequestBody Map<String, Object> request) {
+        
+        try {
+            String phone = (String) request.get("phone");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+            
+            if (phone == null || itemsMap == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Both phone and items are required"
+                ));
+            }
+            
+            // Convert String keys to Long keys
+            Map<Long, Integer> items = new HashMap<>();
+            for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+                try {
+                    Long itemId = Long.parseLong(entry.getKey());
+                    Integer quantity = (entry.getValue() instanceof Integer) ? 
+                        (Integer) entry.getValue() : 
+                        Integer.parseInt(entry.getValue().toString());
+                    items.put(itemId, quantity);
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Invalid item ID or quantity format"
+                    ));
+                }
+            }
+            
+            return ResponseEntity.ok(discountService.getFinalDiscountedOrderWithCustomerInfo(phone, items));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "Error processing request: " + e.getMessage()
+            ));
+        }
+    }
+
+    
 }

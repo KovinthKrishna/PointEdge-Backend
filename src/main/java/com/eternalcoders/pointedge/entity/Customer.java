@@ -19,10 +19,36 @@ public class Customer {
     @Column(name = "name", nullable = false)
     private String name;
 
+    public Object getEmail() {
+        return this.email;
+    }
+    
+    public Object getName() {
+        return this.name;
+    }
+    
+    public Object getPoints() {
+        return this.points;
+    }
+    
+    public Object getTier() {
+        return this.tier;
+    }
+    
+    public Object getTitle() {
+        return this.title;
+    }
+    
+
     public enum Title {
         MR,
         MRS,
-        OTHER
+        OTHER;
+
+        int toUpperCase() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'toUpperCase'");
+        }
     }
 
     @Enumerated(EnumType.STRING)
