@@ -34,9 +34,9 @@ public class DiscountDTO {
     
     private String duration;
 
-    public Object getId() {
-        return id;
-    }
+    // public Object getId() {
+    //     return id;
+    // }
     
     public Object getPercentage() {
         return percentage;
