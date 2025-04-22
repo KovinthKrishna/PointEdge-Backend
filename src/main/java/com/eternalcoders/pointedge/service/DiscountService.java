@@ -30,6 +30,7 @@ import com.eternalcoders.pointedge.entity.Discount;
 import com.eternalcoders.pointedge.entity.Discount.DiscountType;
 import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
 import com.eternalcoders.pointedge.repository.DiscountRepository;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import jakarta.transaction.Transactional;
 
@@ -675,16 +676,25 @@ public class DiscountService {
             
             BigDecimal totalItemAndCategoryDiscount = BigDecimal.ZERO;
             BigDecimal totalLoyaltyDiscount = BigDecimal.ZERO;
+            BigDecimal fullSubtotal = BigDecimal.ZERO; // Includes ALL items (discounted or not)
             BigDecimal discountableSubtotal = BigDecimal.ZERO; // Only includes items with discounts
             
-            // First pass: Identify which items have discounts and calculate discountable subtotal
+            // First pass: Calculate full subtotal (all items)
+            for (Map.Entry<Long, Integer> entry : items.entrySet()) {
+                BigDecimal price = discountRepository.findPriceByItemId(entry.getKey())
+                    .orElse(BigDecimal.ZERO);
+                fullSubtotal = fullSubtotal.add(
+                    price.multiply(BigDecimal.valueOf(entry.getValue())));
+            }
+            
+            // Identify which items have discounts
             Set<Long> discountedItemIds = new HashSet<>();
             
             if (allDiscounts != null && allDiscounts.containsKey("discounts")) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> discounts = (Map<String, Object>) allDiscounts.get("discounts");
                 
-                // Check item discounts
+                // Check item discounts (ONLY DECLARE ONCE)
                 @SuppressWarnings("unchecked")
                 Map<String, List<DiscountDTO>> itemDiscounts = (Map<String, List<DiscountDTO>>) 
                     discounts.getOrDefault("itemDiscounts", Collections.emptyMap());
@@ -692,7 +702,7 @@ public class DiscountService {
                     .map(Long::parseLong)
                     .collect(Collectors.toSet()));
                 
-                // Check category discounts
+                // Check category discounts (ONLY DECLARE ONCE)
                 @SuppressWarnings("unchecked")
                 Map<String, List<DiscountDTO>> categoryDiscounts = (Map<String, List<DiscountDTO>>) 
                     discounts.getOrDefault("categoryDiscounts", Collections.emptyMap());
@@ -700,28 +710,18 @@ public class DiscountService {
                     Long itemId = Long.parseLong(key.split("-")[0]);
                     discountedItemIds.add(itemId);
                 }
-            }
-            
-            // Calculate discountable subtotal (only items with discounts)
-            for (Map.Entry<Long, Integer> entry : items.entrySet()) {
-                if (discountedItemIds.contains(entry.getKey())) {
-                    BigDecimal price = discountRepository.findPriceByItemId(entry.getKey())
-                        .orElse(BigDecimal.ZERO);
-                    discountableSubtotal = discountableSubtotal.add(
-                        price.multiply(BigDecimal.valueOf(entry.getValue())));
+                
+                // Calculate discountable subtotal (only items with discounts)
+                for (Map.Entry<Long, Integer> entry : items.entrySet()) {
+                    if (discountedItemIds.contains(entry.getKey())) {
+                        BigDecimal price = discountRepository.findPriceByItemId(entry.getKey())
+                            .orElse(BigDecimal.ZERO);
+                        discountableSubtotal = discountableSubtotal.add(
+                            price.multiply(BigDecimal.valueOf(entry.getValue())));
+                    }
                 }
-            }
-            
-            // Process discounts
-            if (allDiscounts != null && allDiscounts.containsKey("discounts")) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> discounts = (Map<String, Object>) allDiscounts.get("discounts");
                 
-                // Process item discounts
-                @SuppressWarnings("unchecked")
-                Map<String, List<DiscountDTO>> itemDiscounts = (Map<String, List<DiscountDTO>>) 
-                    discounts.getOrDefault("itemDiscounts", Collections.emptyMap());
-                
+                // Process item discounts (REUSE itemDiscounts, DO NOT REDECLARE)
                 for (Map.Entry<String, List<DiscountDTO>> entry : itemDiscounts.entrySet()) {
                     Long itemId = Long.parseLong(entry.getKey());
                     Integer quantity = items.get(itemId);
@@ -732,7 +732,7 @@ public class DiscountService {
                     
                     for (DiscountDTO discount : entry.getValue()) {
                         Map<String, Object> discountInfo = new HashMap<>();
-                        discountInfo.put("id", discount.getId());
+                        discountInfo.put("id", discount.id);
                         discountInfo.put("itemId", itemId);
                         discountInfo.put("quantity", quantity);
                         discountInfo.put("price", price);
@@ -755,11 +755,7 @@ public class DiscountService {
                     }
                 }
                 
-                // Process category discounts
-                @SuppressWarnings("unchecked")
-                Map<String, List<DiscountDTO>> categoryDiscounts = (Map<String, List<DiscountDTO>>) 
-                    discounts.getOrDefault("categoryDiscounts", Collections.emptyMap());
-                
+                // Process category discounts (REUSE categoryDiscounts, DO NOT REDECLARE)
                 for (Map.Entry<String, List<DiscountDTO>> entry : categoryDiscounts.entrySet()) {
                     String[] parts = entry.getKey().split("-");
                     Long itemId = Long.parseLong(parts[0]);
@@ -771,7 +767,7 @@ public class DiscountService {
                     
                     for (DiscountDTO discount : entry.getValue()) {
                         Map<String, Object> discountInfo = new HashMap<>();
-                        discountInfo.put("id", discount.getId());
+                        discountInfo.put("id", discount.id);
                         discountInfo.put("itemId", itemId);
                         discountInfo.put("quantity", quantity);
                         discountInfo.put("price", price);
@@ -801,7 +797,7 @@ public class DiscountService {
                 
                 for (DiscountDTO discount : loyaltyDiscounts) {
                     Map<String, Object> discountInfo = new HashMap<>();
-                    discountInfo.put("id", discount.getId());
+                    discountInfo.put("id", discount.id);
                     discountInfo.put("totalAmount", discountableSubtotal);
                     
                     BigDecimal discountValue = calculateDiscountValue(discount, discountableSubtotal, 1);
@@ -819,28 +815,32 @@ public class DiscountService {
                     totalLoyaltyDiscount = totalLoyaltyDiscount.add(discountValue);
                     discountDetails.add(discountInfo);
                 }
+                
+                // Calculate final totals (CORRECTED)
+                BigDecimal finalTotalDiscount = totalItemAndCategoryDiscount.add(totalLoyaltyDiscount);
+                BigDecimal finalDiscountedPrice = fullSubtotal.subtract(finalTotalDiscount);
+                
+                response.put("success", true);
+                response.put("discounts", discountDetails);
+                response.put("totalItemAndCategoryDiscount", totalItemAndCategoryDiscount);
+                response.put("totalLoyaltyDiscount", totalLoyaltyDiscount);
+                response.put("finalTotalAmount", fullSubtotal);
+                response.put("finalTotalDiscount", finalTotalDiscount);
+                response.put("finalDiscountedPrice", finalDiscountedPrice);
+            } else {
+                // No discounts, just return full subtotal
+                response.put("success", true);
+                response.put("finalTotalAmount", fullSubtotal);
+                response.put("finalDiscountedPrice", fullSubtotal);
+                response.put("finalTotalDiscount", BigDecimal.ZERO);
             }
-            
-            // Calculate final totals
-            BigDecimal finalTotalDiscount = totalItemAndCategoryDiscount.add(totalLoyaltyDiscount);
-            BigDecimal finalDiscountedPrice = discountableSubtotal.subtract(finalTotalDiscount);
-            
-            response.put("success", true);
-            response.put("discounts", discountDetails);
-            response.put("totalItemAndCategoryDiscount", totalItemAndCategoryDiscount);
-            response.put("totalLoyaltyDiscount", totalLoyaltyDiscount);
-            response.put("finalTotalAmount", discountableSubtotal);
-            response.put("finalTotalDiscount", finalTotalDiscount);
-            response.put("finalDiscountedPrice", finalDiscountedPrice);
-            
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error processing discounts: " + e.getMessage());
         }
-        
         return response;
     }
-
+    
     private BigDecimal calculateDiscountValue(DiscountDTO discount, BigDecimal totalAmount, Integer quantity) {
         try {
             if (discount.getPercentage() != null) {
@@ -855,11 +855,9 @@ public class DiscountService {
             }
             return BigDecimal.ZERO;
         } catch (Exception e) {
-            // Log error if needed
             return BigDecimal.ZERO;
         }
     }
-
     //  final discount return with customer info
 
     public Map<String, Object> getFinalDiscountedOrderWithCustomerInfo(String phone, Map<Long, Integer> items) {
@@ -872,6 +870,8 @@ public class DiscountService {
                 Map<String, Object> discountResponse = getApplicableDiscountIds("", items);
                 
                 response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
+                response.put("finalTotalDiscount", discountResponse.get("finalTotalDiscount"));
+                response.put("finalTotalAmount", discountResponse.get("finalTotalAmount"));
                 response.put("phone", "");
                 response.put("loyaltyTier", "UNKNOWN");
                 response.put("points", 0);
@@ -891,6 +891,8 @@ public class DiscountService {
             if (customerOpt.isEmpty()) {
                 // Customer not found - return universal discounts with minimal customer info
                 response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
+                response.put("finalTotalDiscount", discountResponse.get("finalTotalDiscount"));
+                response.put("finalTotalAmount", discountResponse.get("finalTotalAmount"));
                 response.put("phone", phone);
                 response.put("loyaltyTier", "UNKNOWN");
                 response.put("points", 0);
@@ -925,6 +927,8 @@ public class DiscountService {
             
             // 4. Build the final response
             response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
+            response.put("finalTotalDiscount", discountResponse.get("finalTotalDiscount"));
+                response.put("finalTotalAmount", discountResponse.get("finalTotalAmount"));
             response.put("phone", phone);
             response.put("loyaltyTier", customer.getTier() != null ? 
                             customer.getTier().toString() : "NONE");
