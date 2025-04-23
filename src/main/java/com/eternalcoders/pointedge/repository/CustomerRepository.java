@@ -1,6 +1,7 @@
 package com.eternalcoders.pointedge.repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -40,4 +41,13 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Modifying
     @Query("UPDATE Customer c SET c.tier = :tier WHERE c.phone = :phone")
     void updateTierByPhone(@Param("phone") String phone, @Param("tier") Tier tier);
+
+    // In CustomerRepository.java
+@Query("SELECT " +
+"SUM(CASE WHEN c.tier = 'GOLD' THEN 1 ELSE 0 END) as goldCount, " +
+"SUM(CASE WHEN c.tier = 'SILVER' THEN 1 ELSE 0 END) as silverCount, " +
+"SUM(CASE WHEN c.tier = 'BRONZE' THEN 1 ELSE 0 END) as bronzeCount, " +
+"SUM(CASE WHEN c.tier = 'NOTLOYALTY' THEN 1 ELSE 0 END) as notLoyaltyCount " +
+"FROM Customer c")
+Map<String, Long> countCustomersByTier();
 }
