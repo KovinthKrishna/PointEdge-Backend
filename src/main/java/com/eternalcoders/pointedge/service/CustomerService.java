@@ -1,6 +1,8 @@
 package com.eternalcoders.pointedge.service;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
@@ -111,5 +113,21 @@ public class CustomerService {
                 
         return modelMapper.map(updated, CustomerDTO.class);
     }
+
+    //update customer tier by phone
+
+    // In CustomerService.java
+// In CustomerService.java
+public Map<Tier, Long> countCustomersByTier() {
+    Map<String, Long> results = customerRepository.countCustomersByTier();
+    Map<Tier, Long> tierCounts = new EnumMap<>(Tier.class);
+    
+    tierCounts.put(Tier.GOLD, results.get("goldCount"));
+    tierCounts.put(Tier.SILVER, results.get("silverCount"));
+    tierCounts.put(Tier.BRONZE, results.get("bronzeCount"));
+    tierCounts.put(Tier.NOTLOYALTY, results.get("notLoyaltyCount"));
+    
+    return tierCounts;
+}
 
 }

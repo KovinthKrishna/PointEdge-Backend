@@ -1,6 +1,7 @@
 package com.eternalcoders.pointedge.repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -13,9 +14,21 @@ import org.springframework.stereotype.Repository;
 
 import com.eternalcoders.pointedge.dto.CustomerDTO;
 import com.eternalcoders.pointedge.entity.Customer;
+import com.eternalcoders.pointedge.entity.Customer.Tier;
 import com.eternalcoders.pointedge.entity.Discount;
 import com.eternalcoders.pointedge.entity.Discount.DiscountType;
 import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
+
+import jakarta.transaction.Transactional;
+
+import com.eternalcoders.pointedge.entity.OrderDetails;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.eternalcoders.pointedge.entity.OrderDetails;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface DiscountRepository extends JpaRepository<Discount, Long> {
@@ -123,4 +136,50 @@ public interface DiscountRepository extends JpaRepository<Discount, Long> {
     // final return with discount amout and customer info
     @Query("SELECT c FROM Customer c WHERE c.phone = :phone")
     Optional<Customer> findCustomerByPhone(@Param("phone") String phone);
+
+    ////////////////////////////////// save and update order details
+
+    // get customer points by phone number
+    @Query("SELECT c.points FROM Customer c WHERE c.phone = :phone")
+Optional<Double> findCustomerPointsByPhone(@Param("phone") String phone);
+
+// update customer points by phone number
+
+@Modifying
+@Query("UPDATE Customer c SET c.points = :points WHERE c.phone = :phone")
+void updateCustomerPoints(@Param("phone") String phone, @Param("points") Double points);
+
+// update orderdetails table
+
+
+@Query("SELECT p.name FROM Product p WHERE p.id = :itemId")
+    Optional<String> findProductNameById(@Param("itemId") Long itemId);
+
+    @Modifying
+    @Query(value = "INSERT INTO order_details (" +
+        "customer_id, item_id, discount_id, datetime, amount, " +
+        "total_discount, item_discount, category_discount, " +
+        "loyalty_discount, loyalty_tier, points_earned) " +
+        "VALUES (:customerId, :itemId, :discountId, :datetime, :amount, " +
+        ":totalDiscount, :itemDiscount, :categoryDiscount, " +
+        ":loyaltyDiscount, :loyaltyTier, :pointsEarned)", nativeQuery = true)
+    void saveOrderDetails(
+        @Param("customerId") Long customerId,
+        @Param("itemId") Long itemId,
+        @Param("discountId") Long discountId,
+        @Param("datetime") LocalDateTime datetime,
+        @Param("amount") Double amount,
+        @Param("totalDiscount") Double totalDiscount,
+        @Param("itemDiscount") Double itemDiscount,
+        @Param("categoryDiscount") Double categoryDiscount,
+        @Param("loyaltyDiscount") Double loyaltyDiscount,
+        @Param("loyaltyTier") String loyaltyTier,
+        @Param("pointsEarned") Double pointsEarned);
+
+//lllllllll
+
+@Modifying
+@Query("UPDATE Customer c SET c.tier = :tier WHERE c.phone = :phone")
+void updateCustomerTier(@Param("phone") String phone, @Param("tier") Tier tier);
+
 }

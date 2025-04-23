@@ -119,6 +119,18 @@ public class CustomerController {
         }
     }
 
+    // Get customer count by tier
+
+    // In CustomerController.java
+@GetMapping("/count-by-tier")
+public ResponseEntity<Map<String, Long>> countCustomersByTier() {
+    Map<Customer.Tier, Long> tierCounts = customerService.countCustomersByTier();
     
+    // Convert to String keys for better JSON compatibility
+    Map<String, Long> response = new HashMap<>();
+    tierCounts.forEach((tier, count) -> response.put(tier.name(), count));
+    
+    return ResponseEntity.ok(response);
+}
     
 }

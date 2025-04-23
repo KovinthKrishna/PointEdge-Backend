@@ -439,5 +439,219 @@ public class DiscountController {
         }
     }
 
+    //////////////////////////////// save and update order details
+
+   // get customer points by number
+
+   @GetMapping("/customer-points/{phone}")
+public ResponseEntity<Map<String, Object>> getCustomerPoints(@PathVariable String phone) {
+    return ResponseEntity.ok(discountService.getCustomerPointsByPhone(phone));
+}
+
+//update customer points by phone
+
+@PutMapping("/update-customer-points/{phone}")
+public ResponseEntity<Map<String, Object>> updateCustomerPoints(
+    @PathVariable String phone, 
+    @RequestBody Map<String, Double> request) {
     
+    Double points = request.get("points");
+    return ResponseEntity.ok(discountService.updateCustomerPoints(phone, points));
+}
+
+//get used and erned points by phone number
+
+// In DiscountController.java
+
+@PostMapping("/calculate-points")
+public ResponseEntity<Map<String, Object>> calculatePointsUsageAndEarning(
+    @RequestBody Map<String, Object> request) {
+    
+    try {
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return ResponseEntity.ok(discountService.calculatePointsUsageAndEarning(phone, items));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(Map.of(
+            "success", false,
+            "message", "Error processing request: " + e.getMessage()
+        ));
+    }
+}
+
+// update customer points after calculations
+
+@PostMapping("/update-customer-points-after-purchase")
+public ResponseEntity<Map<String, Object>> updateCustomerPointsAfterPurchase(
+    @RequestBody Map<String, Object> request) {
+    
+    try {
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return ResponseEntity.ok(discountService.updateCustomerPointsAfterPurchase(phone, items));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(Map.of(
+            "success", false,
+            "message", "Error processing request: " + e.getMessage()
+        ));
+    }
+}
+
+// save order details
+
+
+@PostMapping("/complete-discount-info")
+public ResponseEntity<Map<String, Object>> getCompleteDiscountInfo(
+    @RequestBody Map<String, Object> request) {
+    
+    try {
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        // Call the service method through the discountService instance
+        return ResponseEntity.ok(discountService.getCompleteDiscountAndPointsInfo(phone, items));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(Map.of(
+            "success", false,
+            "message", "Error processing request: " + e.getMessage()
+        ));
+    }
+}
+
+// save order details
+
+@PostMapping("/save-order-details")
+public ResponseEntity<Map<String, Object>> saveOrderDetails(
+    @RequestBody Map<String, Object> request) {
+    
+    try {
+        String phone = (String) request.get("phone");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> itemsMap = (Map<String, Object>) request.get("items");
+        
+        if (phone == null || itemsMap == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Both phone and items are required"
+            ));
+        }
+        
+        // Convert String keys to Long keys
+        Map<Long, Integer> items = new HashMap<>();
+        for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+            try {
+                Long itemId = Long.parseLong(entry.getKey());
+                Integer quantity = (entry.getValue() instanceof Integer) ? 
+                    (Integer) entry.getValue() : 
+                    Integer.parseInt(entry.getValue().toString());
+                items.put(itemId, quantity);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid item ID or quantity format"
+                ));
+            }
+        }
+        
+        return ResponseEntity.ok(discountService.saveOrderDetails(phone, items));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(Map.of(
+            "success", false,
+            "message", "Error saving order details: " + e.getMessage()
+        ));
+    }
+}
+
+// update loyalty tier by phone number
+
+@PutMapping("/update-loyalty-status/{phone}")
+public ResponseEntity<Map<String, Object>> updateCustomerLoyaltyStatus(@PathVariable String phone) {
+    try {
+        return ResponseEntity.ok(discountService.updateCustomerLoyaltyStatus(phone));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body(Map.of(
+            "success", false,
+            "message", "Error processing request: " + e.getMessage()
+        ));
+    }
+}
+
+
 }
