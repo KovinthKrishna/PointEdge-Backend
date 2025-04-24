@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import com.eternalcoders.pointedge.entity.Customer;
 import com.eternalcoders.pointedge.entity.Customer.Tier;
+import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
@@ -50,4 +51,31 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 "SUM(CASE WHEN c.tier = 'NOTLOYALTY' THEN 1 ELSE 0 END) as notLoyaltyCount " +
 "FROM Customer c")
 Map<String, Long> countCustomersByTier();
+
+
+
+// fetch orders
+
+
+@Query("SELECT o.orderId, COUNT(o), SUM(o.amount), SUM(o.pointsEarned), MIN(o.datetime) " +
+       "FROM OrderDetails o " +
+       "WHERE o.customer.phone = :phone " +
+       "GROUP BY o.orderId")
+List<Object[]> getOrderDetailsGroupedByOrderIdAndPhone(@Param("phone") String phone);
+
+// update customers tiers when update settings
+
+@Query("SELECT lt FROM LoyaltyThresholds lt WHERE lt.id = 1")
+    Optional<LoyaltyThresholds> findLoyaltyThresholds();
+
+@Modifying
+@Query("UPDATE Customer c SET c.tier = CASE " +
+       "WHEN c.points >= :gold THEN 'GOLD' " +
+       "WHEN c.points >= :silver THEN 'SILVER' " +
+       "WHEN c.points >= :bronze THEN 'BRONZE' " +
+       "ELSE 'NOTLOYALTY' END")
+void updateAllCustomerTiers(@Param("gold") double gold, 
+                          @Param("silver") double silver, 
+                          @Param("bronze") double bronze);
+
 }

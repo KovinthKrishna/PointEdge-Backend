@@ -156,25 +156,26 @@ void updateCustomerPoints(@Param("phone") String phone, @Param("points") Double 
     Optional<String> findProductNameById(@Param("itemId") Long itemId);
 
     @Modifying
-    @Query(value = "INSERT INTO order_details (" +
-        "customer_id, item_id, discount_id, datetime, amount, " +
-        "total_discount, item_discount, category_discount, " +
-        "loyalty_discount, loyalty_tier, points_earned) " +
-        "VALUES (:customerId, :itemId, :discountId, :datetime, :amount, " +
-        ":totalDiscount, :itemDiscount, :categoryDiscount, " +
-        ":loyaltyDiscount, :loyaltyTier, :pointsEarned)", nativeQuery = true)
-    void saveOrderDetails(
-        @Param("customerId") Long customerId,
-        @Param("itemId") Long itemId,
-        @Param("discountId") Long discountId,
-        @Param("datetime") LocalDateTime datetime,
-        @Param("amount") Double amount,
-        @Param("totalDiscount") Double totalDiscount,
-        @Param("itemDiscount") Double itemDiscount,
-        @Param("categoryDiscount") Double categoryDiscount,
-        @Param("loyaltyDiscount") Double loyaltyDiscount,
-        @Param("loyaltyTier") String loyaltyTier,
-        @Param("pointsEarned") Double pointsEarned);
+@Query(value = "INSERT INTO order_details (" +
+    "order_id, customer_id, item_id, discount_id, datetime, amount, " +
+    "total_discount, item_discount, category_discount, " +
+    "loyalty_discount, loyalty_tier, points_earned) " +
+    "VALUES (:orderId, :customerId, :itemId, :discountId, :datetime, :amount, " +
+    ":totalDiscount, :itemDiscount, :categoryDiscount, " +
+    ":loyaltyDiscount, :loyaltyTier, :pointsEarned)", nativeQuery = true)
+void saveOrderDetails(
+    @Param("orderId") String orderId,
+    @Param("customerId") Long customerId,
+    @Param("itemId") Long itemId,
+    @Param("discountId") Long discountId,
+    @Param("datetime") LocalDateTime datetime,
+    @Param("amount") Double amount,
+    @Param("totalDiscount") Double totalDiscount,
+    @Param("itemDiscount") Double itemDiscount,
+    @Param("categoryDiscount") Double categoryDiscount,
+    @Param("loyaltyDiscount") Double loyaltyDiscount,
+    @Param("loyaltyTier") String loyaltyTier,
+    @Param("pointsEarned") Double pointsEarned);
 
 //lllllllll
 

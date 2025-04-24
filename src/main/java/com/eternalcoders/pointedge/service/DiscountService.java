@@ -51,6 +51,9 @@ public class DiscountService {
     
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private CustomerService customerService;
     
     public List<DiscountDTO> getAllDiscounts() {
         List<Discount> discountsList = discountRepository.findAll();
@@ -160,6 +163,7 @@ public class DiscountService {
             thresholdsDTO.bronze,
             thresholdsDTO.points
         );
+        customerService.updateAllCustomerTiers();
         return thresholdsDTO;
     }
 
@@ -1265,80 +1269,6 @@ public Map<String, Object> getCompleteDiscountAndPointsInfo(String phone, Map<Lo
 
 // update order details
 
-// @Transactional
-// public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> items) {
-//     // Get complete discount info first
-//     Map<String, Object> discountInfo = getCompleteDiscountAndPointsInfo(phone, items);
-    
-//     if (!(Boolean) discountInfo.get("success")) {
-//         return discountInfo;
-//     }
-
-//     // First update customer points
-//     Map<String, Object> pointsUpdateResult = updateCustomerPointsAfterPurchase(phone, items);
-//     if (!(Boolean) pointsUpdateResult.get("success")) {
-//         return pointsUpdateResult;
-//     }
-
-//     // Extract common order details
-//     Long customerId = (Long) discountInfo.get("customerId");
-//     String loyaltyTier = (String) discountInfo.get("customerTier");
-//     Double pointsEarned = (Double) discountInfo.get("earnedPoints");
-//     Double totalLoyaltyDiscount = ((Number) discountInfo.get("totalLoyaltyDiscount")).doubleValue();
-//     Double totalCategoryDiscount = ((Number) discountInfo.get("totalCategoryDiscount")).doubleValue();
-    
-//     // Get points rate from loyalty thresholds
-//     LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
-//     double pointsRate = thresholds.points;
-    
-//     // Save each item
-//     @SuppressWarnings("unchecked")
-//     List<Map<String, Object>> itemDetails = (List<Map<String, Object>>) discountInfo.get("itemDetails");
-    
-//     for (Map<String, Object> item : itemDetails) {
-//         Long itemId = ((Number) item.get("itemId")).longValue();
-//         Double amount = ((Number) item.get("totalAmount")).doubleValue();
-//         Double itemDiscount = ((Number) item.get("totalDiscount")).doubleValue();
-        
-//         // Get discount ID if available (from item discounts)
-//         Long discountId = null;
-//         @SuppressWarnings("unchecked")
-//         List<Map<String, Object>> discounts = (List<Map<String, Object>>) item.get("discounts");
-//         if (discounts != null && !discounts.isEmpty()) {
-//             discountId = ((Number) discounts.get(0).get("id")).longValue();
-//         }
-        
-//         // Calculate category and loyalty discounts for this item
-//         Double categoryDiscount = totalCategoryDiscount / itemDetails.size();
-//         Double loyaltyDiscount = totalLoyaltyDiscount / itemDetails.size();
-//         Double totalDiscount = itemDiscount + categoryDiscount + loyaltyDiscount;
-        
-//         // Calculate points earned for this specific item
-//         Double itemPointsEarned = (amount / 100) * pointsRate;
-        
-//         discountRepository.saveOrderDetails(
-//             customerId,
-//             itemId,
-//             discountId,
-//             LocalDateTime.now(),
-//             amount,
-//             totalDiscount,
-//             itemDiscount,
-//             categoryDiscount,
-//             loyaltyDiscount,
-//             loyaltyTier,
-//             itemPointsEarned
-//         );
-//     }
-    
-//     // Combine both results
-//     Map<String, Object> response = new HashMap<>();
-//     response.putAll(discountInfo);
-//     response.putAll(pointsUpdateResult);
-//     response.put("message", "Order details and points updated successfully");
-    
-//     return response;
-// }
 
 @Transactional
 public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> items) {
@@ -1370,6 +1300,9 @@ public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> ite
     Double totalLoyaltyDiscount = ((Number) discountInfo.get("totalLoyaltyDiscount")).doubleValue();
     Double totalCategoryDiscount = ((Number) discountInfo.get("totalCategoryDiscount")).doubleValue();
     
+    // Generate a unique order ID (using current timestamp and customer ID)
+    String orderId = "ORD-" + System.currentTimeMillis() + "-" + customerId;
+    
     // Get points rate from loyalty thresholds
     LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
     double pointsRate = thresholds.points;
@@ -1400,6 +1333,7 @@ public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> ite
         Double itemPointsEarned = (amount / 100) * pointsRate;
         
         discountRepository.saveOrderDetails(
+            orderId,  // Same order ID for all items
             customerId,
             itemId,
             discountId,
@@ -1409,7 +1343,7 @@ public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> ite
             itemDiscount,
             categoryDiscount,
             loyaltyDiscount,
-            loyaltyTier,  // Use the updated tier
+            loyaltyTier,
             itemPointsEarned
         );
     }
@@ -1419,11 +1353,11 @@ public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> ite
     response.putAll(discountInfo);
     response.putAll(pointsUpdateResult);
     response.putAll(loyaltyUpdateResult);
+    response.put("orderId", orderId);  // Include the order ID in the response
     response.put("message", "Order details, points, and loyalty status updated successfully");
     
     return response;
 }
-
 
 // update loyalty tier
 

@@ -1,9 +1,13 @@
 package com.eternalcoders.pointedge.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -12,8 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.eternalcoders.pointedge.dto.CustomerDTO;
+import com.eternalcoders.pointedge.dto.LoyaltyThresholdsDTO;
 import com.eternalcoders.pointedge.entity.Customer;
 import com.eternalcoders.pointedge.entity.Customer.Tier;
+import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
 import com.eternalcoders.pointedge.repository.CustomerRepository;
 
 import jakarta.transaction.Transactional;
@@ -128,6 +134,57 @@ public Map<Tier, Long> countCustomersByTier() {
     tierCounts.put(Tier.NOTLOYALTY, results.get("notLoyaltyCount"));
     
     return tierCounts;
+}
+
+// find tier by phone
+
+// In CustomerService.java
+public Tier getCustomerTierByPhone(String phone) {
+    Customer customer = customerRepository.findByPhone(phone)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+    return (Tier) customer.getTier();
+}
+
+// fetch orders
+
+
+public List<Map<String, Object>> getOrderDetailsGroupedByOrderIdAndPhone(String phone) {
+    // First check if customer exists
+    Customer customer = customerRepository.findByPhone(phone)
+            .orElseThrow(() -> new RuntimeException("Customer not found with phone: " + phone));
+            
+    List<Object[]> results = customerRepository.getOrderDetailsGroupedByOrderIdAndPhone(phone);
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy, hh:mm:ssa");
+    
+    return results.stream().map(row -> {
+        Map<String, Object> map = new LinkedHashMap<>();
+        LocalDateTime datetime = (LocalDateTime) row[4];
+        String formattedDateTime = datetime.format(formatter);
+        
+        map.put("orderId", row[0]);
+        map.put("itemCount", row[1]);
+        map.put("totalAmount", row[2]);
+        map.put("totalPointsEarned", row[3]);
+        map.put("orderDateTime", formattedDateTime);
+        return map;
+    }).collect(Collectors.toList());
+}
+
+// update customers tiers when update settings
+
+public LoyaltyThresholdsDTO getLoyaltyThresholds() {
+        LoyaltyThresholds thresholds = customerRepository.findLoyaltyThresholds()
+            .orElseThrow(() -> new RuntimeException("Loyalty thresholds not found"));
+        return modelMapper.map(thresholds, LoyaltyThresholdsDTO.class);
+    }
+
+public void updateAllCustomerTiers() {
+    LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
+    customerRepository.updateAllCustomerTiers(
+        thresholds.getGold(),
+        thresholds.getSilver(),
+        thresholds.getBronze()
+    );
 }
 
 }

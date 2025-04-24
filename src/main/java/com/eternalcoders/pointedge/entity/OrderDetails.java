@@ -70,4 +70,7 @@ public class OrderDetails {
     @Column(name = "points_earned")
     private Double pointsEarned;
 
+    @Column(name = "order_id", nullable = false)
+    private String orderId;
+
 }
