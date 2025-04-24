@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.eternalcoders.pointedge.dto.CustomerDTO;
+import com.eternalcoders.pointedge.dto.LoyaltyThresholdsDTO;
 import com.eternalcoders.pointedge.entity.Customer;
 import com.eternalcoders.pointedge.entity.Customer.Tier;
+import com.eternalcoders.pointedge.repository.CustomerRepository;
 import com.eternalcoders.pointedge.service.CustomerService;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -132,5 +134,72 @@ public ResponseEntity<Map<String, Long>> countCustomersByTier() {
     
     return ResponseEntity.ok(response);
 }
+
+// get tier by phone
+
+// In CustomerController.java
+@GetMapping("/get-tier/{phone}")
+public ResponseEntity<Tier> getCustomerTier(@PathVariable String phone) {
+    try {
+        Tier tier = customerService.getCustomerTierByPhone(phone);
+        return ResponseEntity.ok(tier);
+    } catch (Exception e) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found: " + e.getMessage(), e);
+    }
+}
     
+
+// fetch orders
+
+
+@GetMapping("/orders/grouped/{phone}")
+public ResponseEntity<List<Map<String, Object>>> getGroupedOrdersByPhone(@PathVariable String phone) {
+    try {
+        List<Map<String, Object>> groupedOrders = customerService.getOrderDetailsGroupedByOrderIdAndPhone(phone);
+        return ResponseEntity.ok(groupedOrders);
+    } catch (Exception e) {
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND, 
+            "Error retrieving orders: " + e.getMessage(), 
+            e
+        );
+    }
+}
+
+// update customer tiers when update settings
+
+@GetMapping("/loyalty-thresholds2")
+    public ResponseEntity<LoyaltyThresholdsDTO> getLoyaltyThresholds() {
+        return ResponseEntity.ok(customerService.getLoyaltyThresholds());
+    }
+
+
+@PatchMapping("/update-all-tiers")
+public ResponseEntity<Map<String, Object>> updateAllCustomerTiers() {
+    try {
+        // Update all customer tiers using thresholds from database
+        customerService.updateAllCustomerTiers();
+        
+        // Get updated counts
+        Map<Customer.Tier, Long> tierCounts = customerService.countCustomersByTier();
+        
+        // Get current thresholds for response
+        LoyaltyThresholdsDTO currentThresholds = customerService.getLoyaltyThresholds();
+        
+        // Prepare response
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "All customer tiers updated successfully using current thresholds");
+        response.put("thresholds", currentThresholds);
+        response.put("counts", tierCounts);
+        
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", "error");
+        errorResponse.put("message", "Error updating customer tiers: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+}
+
 }

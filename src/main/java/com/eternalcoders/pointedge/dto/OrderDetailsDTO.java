@@ -26,4 +26,5 @@ public class OrderDetailsDTO {
     private Double loyaltyDiscount;
     private String loyaltyTier;
     private Double pointsEarned;
+    private String orderId;
 }
