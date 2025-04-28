@@ -19,19 +19,13 @@ public class Invoice {
 
     private LocalDateTime date;
     private Double totalAmount;
+    @Setter
+    @Getter
     private Integer loyaltyPoints;
 
     // OneToMany: Invoice has many InvoiceItems
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL)
     private List<InvoiceItem> items;
-
-    public Integer getLoyaltyPoints() {
-        return loyaltyPoints;
-    }
-
-    public void setLoyaltyPoints(Integer loyaltyPoints) {
-        this.loyaltyPoints = loyaltyPoints;
-    }
 
 }
 

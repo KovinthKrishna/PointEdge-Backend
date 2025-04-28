@@ -1,6 +1,7 @@
 package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.InvoiceDTO;
+import com.eternalcoders.pointedge.dto.InvoiceItemDTO;
 import com.eternalcoders.pointedge.dto.ReturnRequestDTO;
 import com.eternalcoders.pointedge.dto.ReturnedItemDTO;
 import com.eternalcoders.pointedge.entity.*;
@@ -55,14 +56,27 @@ public class ReturnService {
         dto.setLoyaltyPoints(invoice.getLoyaltyPoints());
 
         dto.setItems(items.stream().map(item -> {
-            ReturnedItemDTO returnedItem = new ReturnedItemDTO();
-            returnedItem.setItemId(item.getId());
-            returnedItem.setQuantity(item.getQuantity());
-            return returnedItem;
+            InvoiceItemDTO invoiceItemDTO = new InvoiceItemDTO();
+            invoiceItemDTO.setItemId(item.getId());
+
+            Product product = productRepository.findById(item.getProductId())
+                    .orElse(null);
+
+            if (product != null) {
+                invoiceItemDTO.setProductName(product.getName());
+                invoiceItemDTO.setPrice(product.getPrice());
+            } else {
+                invoiceItemDTO.setProductName("Unknown Product");
+                invoiceItemDTO.setPrice(0.0);
+            }
+
+            invoiceItemDTO.setQuantity(item.getQuantity());
+            return invoiceItemDTO;
         }).collect(Collectors.toList()));
 
         return dto;
     }
+
 
     @Transactional
     public void handleReturn(ReturnRequestDTO returnRequest) {
