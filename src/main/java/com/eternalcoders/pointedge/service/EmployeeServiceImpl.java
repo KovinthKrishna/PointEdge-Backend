@@ -4,6 +4,7 @@ import com.eternalcoders.pointedge.dto.EmployeeDTO;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,6 +12,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Autowired
     private EmployeeRepository repository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder; // ✅ Inject password encoder
 
     @Override
     public void registerEmployee(EmployeeDTO dto) {
@@ -27,7 +31,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setLastName(dto.getLastName());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setEmail(dto.getEmail());
-        employee.setTempPassword(dto.getTempPassword());
+
+        // ✅ Encode password before saving
+        employee.setTempPassword(passwordEncoder.encode(dto.getTempPassword()));
 
         repository.save(employee);
     }
