@@ -596,7 +596,6 @@ public ResponseEntity<Map<String, Object>> getCompleteDiscountInfo(
 }
 
 // save order details
-
 @PostMapping("/save-order-details")
 public ResponseEntity<Map<String, Object>> saveOrderDetails(
     @RequestBody Map<String, Object> request) {

@@ -21,6 +21,10 @@ public class ReturnItem {
     private int quantity;
 
     @Setter
+    private double refundAmount;
+
+
+    @Setter
     @ManyToOne
     @JoinColumn(name = "request_return_id")
     private RequestReturn requestReturn;

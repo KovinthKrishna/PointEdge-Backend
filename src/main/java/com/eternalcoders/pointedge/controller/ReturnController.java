@@ -16,17 +16,24 @@ public class ReturnController {
         this.returnService = returnService;
     }
 
-    // 🧹 Fetch invoice details, including item names and prices
+    // Fetch invoice details, including item names and prices
     @GetMapping("/invoice/{invoiceNumber}")
     public ResponseEntity<InvoiceDTO> getInvoice(@PathVariable String invoiceNumber) {
         InvoiceDTO invoiceDTO = returnService.fetchInvoiceDetails(invoiceNumber);
         return ResponseEntity.ok(invoiceDTO);
     }
 
-    // 🧹 Process return request
+    // Process return request
     @PostMapping("/items")
     public ResponseEntity<String> processReturn(@RequestBody ReturnRequestDTO returnRequest) {
         returnService.handleReturn(returnRequest);
         return ResponseEntity.ok("Return processed successfully");
+    }
+
+    // Process refund request
+    @PostMapping("/refund")
+    public ResponseEntity<String> processRefund(@RequestBody ReturnRequestDTO refundRequest) {
+        returnService.handleReturn(refundRequest); // Call on the instance, not statically
+        return ResponseEntity.ok("Refund processed successfully");
     }
 }
