@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/point-edge?createDatabaseIfNotExist=true
     username: root
-    password: 20020818
+    password: 12345
   jpa:
     hibernate:
       ddl-auto: update
