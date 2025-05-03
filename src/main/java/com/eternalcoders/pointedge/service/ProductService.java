@@ -6,9 +6,9 @@ import com.eternalcoders.pointedge.entity.Product;
 import com.eternalcoders.pointedge.repository.BrandRepository;
 import com.eternalcoders.pointedge.repository.CategoryRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ProductService {
@@ -22,8 +22,15 @@ public class ProductService {
         this.categoryRepository = categoryRepository;
     }
 
-    public List<Product> getFilteredProducts(Long brandId, Long categoryId, Boolean hidden) {
-        return productRepository.findProductsByFilters(brandId, categoryId, hidden);
+    public Page<Product> getFilteredProducts(Long brandId, Long categoryId, Boolean hidden, String search, Pageable pageable) {
+        return productRepository.findFilteredProducts(brandId, categoryId, hidden, search, pageable);
+    }
+
+    public Product getProductByBarcode(String barcode) {
+        Product product = productRepository.findByBarcode(barcode).orElse(null);
+        if (product != null && !product.isHidden())
+            return product;
+        return null;
     }
 
     public Product addProduct(Product product) {
