@@ -30,6 +30,7 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
     
+    
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
     private List<Attendance> attendances;
     

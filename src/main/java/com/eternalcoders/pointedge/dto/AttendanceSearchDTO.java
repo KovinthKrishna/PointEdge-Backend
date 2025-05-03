@@ -12,4 +12,5 @@ public class AttendanceSearchDTO {
     private String startTime;
     private String endTime;
     private String searchQuery;
+    private Long employeeId;
 }

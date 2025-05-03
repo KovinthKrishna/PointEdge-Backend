@@ -3,6 +3,7 @@ package com.eternalcoders.pointedge.service;
 import com.eternalcoders.pointedge.dto.EmployeeDTO;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.exception.ResourceNotFoundException;
+import com.eternalcoders.pointedge.repository.AttendanceRepository;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,11 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+
+     @Autowired
+    private AttendanceRepository attendanceRepository;
+
+    
 
     @Override
     public List<Employee> getAllEmployees() {
