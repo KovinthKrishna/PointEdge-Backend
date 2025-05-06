@@ -4,6 +4,9 @@ import com.eternalcoders.pointedge.entity.Product;
 import com.eternalcoders.pointedge.service.ImageService;
 import com.eternalcoders.pointedge.service.ProductService;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -14,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 
 @RestController
 @RequestMapping("/products")
@@ -28,12 +30,19 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getFilteredProducts(
+    public ResponseEntity<Page<Product>> getFilteredProducts(
             @RequestParam(required = false) Long brandId,
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) Boolean hidden
+            @RequestParam(required = false) Boolean hidden,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 24, sort = "name") Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.getFilteredProducts(brandId, categoryId, hidden));
+        return ResponseEntity.ok(productService.getFilteredProducts(brandId, categoryId, hidden, search, pageable));
+    }
+
+    @GetMapping("/{barcode}")
+    public ResponseEntity<Product> getProductByBarcode(@PathVariable String barcode) {
+        return ResponseEntity.ok(productService.getProductByBarcode(barcode));
     }
 
     @PostMapping

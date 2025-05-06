@@ -6,6 +6,8 @@ import com.eternalcoders.pointedge.entity.OrderItem;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,7 +15,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
-import java.util.List;
 
 @Service
 public class OrderService {
@@ -40,8 +41,8 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    public List<ProductOrderQuantityDTO> getTotalOrdersForProducts(
-            Long brandId, Long categoryId, String timeFilter) {
+    public Page<ProductOrderQuantityDTO> getTotalOrdersForProducts(
+            Long brandId, Long categoryId, String timeFilter, String search, Pageable pageable) {
         LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
         LocalDateTime startDate = null;
         LocalDateTime endDate = switch (timeFilter == null ? "" : timeFilter) {
@@ -67,6 +68,6 @@ public class OrderService {
             }
             default -> null;
         };
-        return orderItemRepository.getTotalOrdersForProducts(brandId, categoryId, startDate, endDate);
+        return orderItemRepository.getTotalOrdersForProducts(brandId, categoryId, startDate, endDate, search, pageable);
     }
 }

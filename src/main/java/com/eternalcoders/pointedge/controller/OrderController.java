@@ -3,11 +3,12 @@ package com.eternalcoders.pointedge.controller;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.service.OrderService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
@@ -29,11 +30,13 @@ public class OrderController {
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<List<ProductOrderQuantityDTO>> getTotalOrdersForProducts(
+    public ResponseEntity<Page<ProductOrderQuantityDTO>> getTotalOrdersForProducts(
             @RequestParam(required = false) Long brandId,
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String timeFilter
+            @RequestParam(required = false) String timeFilter,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20) Pageable pageable
     ) {
-        return ResponseEntity.ok(orderService.getTotalOrdersForProducts(brandId, categoryId, timeFilter));
+        return ResponseEntity.ok(orderService.getTotalOrdersForProducts(brandId, categoryId, timeFilter, search, pageable));
     }
 }
