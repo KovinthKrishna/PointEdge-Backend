@@ -16,24 +16,24 @@ public class ReturnController {
         this.returnService = returnService;
     }
 
-    // Fetch invoice details, including item names and prices
+    // Fetch invoice details
     @GetMapping("/invoice/{invoiceNumber}")
     public ResponseEntity<InvoiceDTO> getInvoice(@PathVariable String invoiceNumber) {
         InvoiceDTO invoiceDTO = returnService.fetchInvoiceDetails(invoiceNumber);
         return ResponseEntity.ok(invoiceDTO);
     }
 
-    // Process return request
-    @PostMapping("/items")
+    // Process return request (stock update, history)
+    @PostMapping("/process")
     public ResponseEntity<String> processReturn(@RequestBody ReturnRequestDTO returnRequest) {
-        returnService.handleReturn(returnRequest);
+        returnService.handleReturn(returnRequest); // Handles inventory and logs
         return ResponseEntity.ok("Return processed successfully");
     }
 
-    // Process refund request
+    // (Optional) Refund trigger — for future payment gateway integration
     @PostMapping("/refund")
-    public ResponseEntity<String> processRefund(@RequestBody ReturnRequestDTO refundRequest) {
-        returnService.handleReturn(refundRequest); // Call on the instance, not statically
-        return ResponseEntity.ok("Refund processed successfully");
+    public ResponseEntity<String> processRefund(@RequestBody ReturnRequestDTO returnRequest) {
+        returnService.handleRefund(returnRequest); // Placeholder for actual refund logic
+        return ResponseEntity.ok("Refund processed (stub)");
     }
 }

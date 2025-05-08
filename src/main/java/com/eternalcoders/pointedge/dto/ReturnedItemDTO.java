@@ -1,14 +1,15 @@
 package com.eternalcoders.pointedge.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.*;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 public class ReturnedItemDTO {
+    @NotNull
     private Long itemId;
-    private int quantity;
-    private boolean returned;
-    private String reason;
 
+    @Min(1)
+    private int quantity;
+
+    private String reason;
 }
