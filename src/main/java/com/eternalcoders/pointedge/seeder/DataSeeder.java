@@ -211,7 +211,7 @@ public class DataSeeder implements CommandLineRunner {
             List<Brand> brands = new ArrayList<>();
             for (int i = 1; i <= 10; i++) {
                 Brand brand = new Brand();
-                brand.setName("Brand " + i);
+                brand.setName(String.format("Brand %02d", i));
                 brands.add(brand);
             }
             brandRepository.saveAll(brands);
@@ -223,7 +223,7 @@ public class DataSeeder implements CommandLineRunner {
             List<Category> categories = new ArrayList<>();
             for (int i = 1; i <= 10; i++) {
                 Category category = new Category();
-                category.setName("Category " + i);
+                category.setName(String.format("Category %02d", i));
                 categories.add(category);
             }
             categoryRepository.saveAll(categories);
@@ -238,9 +238,9 @@ public class DataSeeder implements CommandLineRunner {
 
             for (int i = 1; i <= 200; i++) {
                 Product product = new Product();
-                product.setName("Product " + i);
-                product.setPrice(random.nextInt(500));
-                product.setStockQuantity(random.nextInt(1000));
+                product.setName(String.format("Product %03d", i));
+                product.setPrice(Math.round((100 + (random.nextDouble() * 899.99)) * 100) / 100.0);
+                product.setStockQuantity(200 + random.nextInt(300));
                 product.setBrand(brands.get(random.nextInt(brands.size())));
                 product.setCategory(categories.get(random.nextInt(categories.size())));
 
