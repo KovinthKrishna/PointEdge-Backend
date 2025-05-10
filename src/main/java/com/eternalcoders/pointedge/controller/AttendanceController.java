@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,7 +39,6 @@ public class AttendanceController {
         return ResponseEntity.ok(attendances);
     }
 
-
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployee(@PathVariable Long employeeId) {
         try {
@@ -53,6 +51,7 @@ public class AttendanceController {
             return ResponseEntity.notFound().build();
         }
     }
+
     @GetMapping("/date/{date}")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -64,50 +63,71 @@ public class AttendanceController {
 
     @PostMapping("/search")
     public ResponseEntity<List<AttendanceDTO>> searchAttendances(@RequestBody AttendanceSearchDTO searchDTO) {
-        // This is a simplified example. In a real implementation, you would build more complex queries
-        LocalDate date = LocalDate.parse(searchDTO.getDate(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        List<Attendance> attendances = attendanceService.findByDate(date);
-        
-        List<AttendanceDTO> result = attendances.stream()
-                .filter(a -> searchDTO.getSearchQuery().isEmpty() || 
-                        a.getEmployee().getName().toLowerCase().contains(searchDTO.getSearchQuery().toLowerCase()) ||
-                        a.getEmployee().getRole().toLowerCase().contains(searchDTO.getSearchQuery().toLowerCase()))
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-                
-        return ResponseEntity.ok(result);
+        try {
+            // Get all attendances
+            List<Attendance> attendances = attendanceService.getAllAttendances();
+            
+            // Apply employee ID filter if provided
+            if (searchDTO.getEmployeeId() != null) {
+                System.out.println("Filtering by employee ID: " + searchDTO.getEmployeeId());
+                attendances = attendances.stream()
+                    .filter(a -> a.getEmployee().getId().equals(searchDTO.getEmployeeId()))
+                    .collect(Collectors.toList());
+            }
+    
+            // Apply search filter on employee name and role
+            String searchQuery = searchDTO.getSearchQuery() != null ? 
+                    searchDTO.getSearchQuery().toLowerCase() : "";
+    
+            List<AttendanceDTO> result = attendances.stream()
+                    .filter(a -> searchQuery.isEmpty() || 
+                            (a.getEmployee().getName() != null && 
+                             a.getEmployee().getName().toLowerCase().contains(searchQuery)) ||
+                            (a.getEmployee().getRole() != null && 
+                             a.getEmployee().getRole().toLowerCase().contains(searchQuery)))
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+                    
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            // Log the error
+            System.err.println("Error in search: " + e.getMessage());
+            e.printStackTrace(); // Add stack trace for better debugging
+            return ResponseEntity.status(500).build();
+        }
     }
 
-    @PostMapping("/clock-in/{employeeId}")
-    public ResponseEntity<AttendanceDTO> clockIn(
-            @PathVariable Long employeeId,
-            @RequestParam(required = false) String time) {
-        
-        LocalTime clockInTime;
-        if (time != null && !time.isEmpty()) {
-            clockInTime = LocalTime.parse(time);
-        } else {
-            clockInTime = LocalTime.now();
-        }
-        
-        Attendance attendance = attendanceService.clockIn(employeeId, clockInTime);
-        return ResponseEntity.ok(convertToDTO(attendance));
-    }
+    @PostMapping
+    public ResponseEntity<AttendanceDTO> createAttendance(@RequestBody AttendanceDTO dto) {
+        try {
+            Employee employee = employeeService.getEmployeeById(dto.getEmployeeId());
 
-    @PostMapping("/clock-out/{employeeId}")
-    public ResponseEntity<AttendanceDTO> clockOut(
-            @PathVariable Long employeeId,
-            @RequestParam(required = false) String time) {
-        
-        LocalTime clockOutTime;
-        if (time != null && !time.isEmpty()) {
-            clockOutTime = LocalTime.parse(time);
-        } else {
-            clockOutTime = LocalTime.now();
+            Attendance attendance = new Attendance();
+            attendance.setEmployee(employee);
+            attendance.setDate(dto.getDate() != null ? dto.getDate() : LocalDate.now());
+
+            // Parse time strings to LocalTime
+            if (dto.getClockIn() != null && !dto.getClockIn().isEmpty()) {
+                attendance.setClockIn(LocalTime.parse(dto.getClockIn()));
+            }
+
+            if (dto.getClockOut() != null && !dto.getClockOut().isEmpty()) {
+                attendance.setClockOut(LocalTime.parse(dto.getClockOut()));
+
+                // Calculate hours if both clock-in and clock-out are present
+                if (attendance.getClockIn() != null) {
+                    attendance.setTotalHours(attendanceService.calculateTotalHours(
+                            attendance.getClockIn(), attendance.getClockOut()));
+                    attendance.setOtHours(attendanceService.calculateOTHours(
+                            attendance.getClockIn(), attendance.getClockOut(), LocalTime.of(16, 0)));
+                }
+            }
+
+            Attendance savedAttendance = attendanceService.saveAttendance(attendance);
+            return ResponseEntity.ok(convertToDTO(savedAttendance));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
-        
-        Attendance attendance = attendanceService.clockOut(employeeId, clockOutTime);
-        return ResponseEntity.ok(convertToDTO(attendance));
     }
 
     private AttendanceDTO convertToDTO(Attendance attendance) {
