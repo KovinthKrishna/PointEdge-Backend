@@ -42,7 +42,7 @@ public class Discount {
         foreignKey = @ForeignKey(name = "fk_discount_product"),
         unique = false
     )
-    private Product item;  // References products.id
+    private Product item;  
     
     @ManyToOne
     @JoinColumn(
@@ -51,7 +51,7 @@ public class Discount {
         foreignKey = @ForeignKey(name = "fk_discount_category"),
         unique = false
     )
-    private Category category;  // References categories.id
+    private Category category;
     
     public enum LoyaltyTier {
         GOLD,

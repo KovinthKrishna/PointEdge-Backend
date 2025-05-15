@@ -13,8 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +20,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.eternalcoders.pointedge.dto.CustomerDTO;
 import com.eternalcoders.pointedge.dto.DiscountDTO;
 import com.eternalcoders.pointedge.dto.LoyaltyThresholdsDTO;
 import com.eternalcoders.pointedge.entity.Customer;
@@ -31,11 +28,8 @@ import com.eternalcoders.pointedge.entity.Discount;
 import com.eternalcoders.pointedge.entity.Discount.DiscountType;
 import com.eternalcoders.pointedge.entity.LoyaltyThresholds;
 import com.eternalcoders.pointedge.repository.DiscountRepository;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import org.springframework.transaction.annotation.Transactional;
 
-import org.springframework.transaction.annotation.Propagation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,39 +48,46 @@ public class DiscountService {
 
     @Autowired
     private CustomerService customerService;
-    
+
+    // get all discounts
     public List<DiscountDTO> getAllDiscounts() {
         List<Discount> discountsList = discountRepository.findAll();
         return modelMapper.map(discountsList, new TypeToken<List<DiscountDTO>>(){}.getType());
     }
-    
+
+    //add discount
     public DiscountDTO addDiscount(DiscountDTO discountDTO) {
         Discount discount = modelMapper.map(discountDTO, Discount.class);
         Discount savedDiscount = discountRepository.save(discount);
         return modelMapper.map(savedDiscount, DiscountDTO.class);
     }
     
+    //update discount
     public DiscountDTO updateDiscount(DiscountDTO discountDTO) {
         Discount discount = modelMapper.map(discountDTO, Discount.class);
         Discount updatedDiscount = discountRepository.save(discount);
         return modelMapper.map(updatedDiscount, DiscountDTO.class);
     }
     
+    //get discount by type
     public List<DiscountDTO> getDiscountsByType(DiscountType discountType) {
         List<Discount> discounts = discountRepository.findByType(discountType);
         return modelMapper.map(discounts, new TypeToken<List<DiscountDTO>>(){}.getType());
     }
     
+    //get discount by id
     public DiscountDTO getDiscountById(Long id) {
         Discount discount = discountRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Discount not found with id: " + id));
         return modelMapper.map(discount, DiscountDTO.class);
     }
 
+    //get discount by name
     public List<String> getAllDiscountNames() {
         return discountRepository.findAllDiscountNames();
     }
     
+    //delete discount by id
     public void deleteDiscountById(Long id) {
         if (!discountRepository.existsById(id)) {
             throw new RuntimeException("Discount not found with id: " + id);
@@ -94,24 +95,27 @@ public class DiscountService {
         discountRepository.deleteById(id);
     }
 
+    //get all product names 
     public List<String> getAllProductNames() {
         return discountRepository.findAllProductNames();
     }
     
+    //get all category names
     public List<String> getAllCategoryNames() {
         return discountRepository.findAllCategoryNames();
     }
 
+    //validate admin password
     private boolean validateAdminPassword(String password) {
         return discountRepository.existsByAdminPassword(password);
     }
 
+    //delete all discounts
     public boolean deleteAllDiscountsWithAuth(String password) {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be empty");
         }
-        
-        // Add debug logging
+
         System.out.println("Validating password: " + password);
         boolean isValid = discountRepository.existsByAdminPassword(password);
         System.out.println("Password validation result: " + isValid);
@@ -132,30 +136,33 @@ public class DiscountService {
         }
     }
 
+    //delete discounts by type
     public boolean deleteDiscountsByTypeWithAuth(DiscountType type, String adminPassword) {
         if (!discountRepository.existsByAdminPassword(adminPassword)) {
             throw new SecurityException("Invalid admin password");
         }
         
         try {
-            discountRepository.deleteByType(type); // Using the existing deleteByType method
+            discountRepository.deleteByType(type); 
             return true;
         } catch (Exception e) {
-            // log.error("Error deleting discounts by type", e);
             return false;
         }
     }
 
+    //count discounts by type
     public long countDiscountsByType(DiscountType type) {
         return discountRepository.countByType(type);
     }
 
+    //get loyalty thresholds
     public LoyaltyThresholdsDTO getLoyaltyThresholds() {
         LoyaltyThresholds thresholds = discountRepository.findLoyaltyThresholds()
             .orElseThrow(() -> new RuntimeException("Loyalty thresholds not found"));
         return modelMapper.map(thresholds, LoyaltyThresholdsDTO.class);
     }
     
+    //update loyalty thresholds
     public LoyaltyThresholdsDTO updateLoyaltyThresholds(LoyaltyThresholdsDTO thresholdsDTO) {
         discountRepository.updateLoyaltyThresholds(
             thresholdsDTO.gold,
@@ -166,19 +173,20 @@ public class DiscountService {
         customerService.updateAllCustomerTiers();
         return thresholdsDTO;
     }
-
-    // below methods for integration
     
+    //get active item discounts
     public List<DiscountDTO> getActiveItemDiscounts(Long itemId, Discount.LoyaltyTier loyaltyTier) {
         List<Discount> discounts = discountRepository.findActiveItemDiscounts(itemId, loyaltyTier);
         return modelMapper.map(discounts, new TypeToken<List<DiscountDTO>>(){}.getType());
     }
 
+    //get active category discounts
     public List<DiscountDTO> getActiveCategoryDiscounts(Long categoryId, Discount.LoyaltyTier loyaltyTier) {
         List<Discount> discounts = discountRepository.findActiveCategoryDiscounts(categoryId, loyaltyTier);
         return modelMapper.map(discounts, new TypeToken<List<DiscountDTO>>(){}.getType());
     }
 
+    //get active loyalty discounts
     public List<DiscountDTO> getActiveLoyaltyDiscounts(Discount.LoyaltyTier tier) {
         List<Discount> discounts = discountRepository.findActiveLoyaltyDiscounts(tier);
         return modelMapper.map(discounts, new TypeToken<List<DiscountDTO>>(){}.getType());
@@ -206,9 +214,9 @@ public class DiscountService {
 
     // calculate total price without discounts
     /**
-     * Calculate the total amount for given items with their quantities
-     * @param itemQuantities Map of item IDs to their quantities
-     * @return The total calculated amount
+      
+     @param itemQuantities
+     * @return 
      */
     public BigDecimal calculateTotalAmount(Map<Long, Integer> itemQuantities) {
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -216,24 +224,19 @@ public class DiscountService {
         for (Map.Entry<Long, Integer> entry : itemQuantities.entrySet()) {
             Long itemId = entry.getKey();
             Integer quantity = entry.getValue();
-            
-            // Skip if quantity is zero or negative
             if (quantity <= 0) {
                 continue;
             }
             
-            // Get price from the existing API
             ResponseEntity<Map<String, Object>> response = getProductPriceById(itemId);
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> priceData = response.getBody();
                 
-                // Check if the product was found and price exists
                 if ((Boolean) priceData.get("success") && priceData.containsKey("price")) {
                     Object priceObj = priceData.get("price");
                     BigDecimal price;
                     
-                    // Convert the price object to BigDecimal based on its type
                     if (priceObj instanceof BigDecimal) {
                         price = (BigDecimal) priceObj;
                     } else if (priceObj instanceof Double) {
@@ -244,7 +247,6 @@ public class DiscountService {
                         price = new BigDecimal(priceObj.toString());
                     }
                     
-                    // Calculate item total (price * quantity) and add to running sum
                     BigDecimal itemTotal = price.multiply(BigDecimal.valueOf(quantity));
                     totalAmount = totalAmount.add(itemTotal);
                 }
@@ -274,9 +276,8 @@ public class DiscountService {
         }
     }
 
-    // get all applicable loyslty discounts for a given product ID and customer phone number
+    // get all applicable loyalty discounts for a given product ID and customer phone number
     public ResponseEntity<Map<String, Object>> getApplicableLoyaltyDiscounts(String phone) {
-        // Step 1: Find customer tier
         if (phone == null || phone.trim().isEmpty()) {
             return ResponseEntity.ok(Map.of(
                 "success", false,
@@ -285,7 +286,6 @@ public class DiscountService {
             ));
         }
     
-        // Get customer tier from repository
         Optional<Discount.LoyaltyTier> tierOptional = discountRepository.findCustomerLoyaltyTierByPhone(phone);
         
         if (tierOptional.isEmpty()) {
@@ -297,8 +297,7 @@ public class DiscountService {
         }
     
         Discount.LoyaltyTier tier = tierOptional.get();
-        
-        // Steps 2 & 3 combined using repository method
+       
         List<Discount> discounts = discountRepository.findActiveLoyaltyDiscountsByTypeAndTier(tier);
         List<DiscountDTO> discountDTOs = modelMapper.map(discounts, new TypeToken<List<DiscountDTO>>(){}.getType());
         
@@ -311,11 +310,11 @@ public class DiscountService {
         ));
     }
 
+    // get applicable item discounts
     public ResponseEntity<Map<String, Object>> getApplicableItemDiscounts(String phone, Map<Long, Integer> items) {
-        // Step 1: Initialize response
+        
         Map<String, Object> response = new HashMap<>();
         
-        // Step 2: Handle case when phone is null or empty
         if (phone == null || phone.trim().isEmpty()) {
             Map<String, List<DiscountDTO>> universalDiscounts = new HashMap<>();
             
@@ -323,7 +322,7 @@ public class DiscountService {
                 List<Discount> allDiscounts = discountRepository.findActiveItemDiscounts(itemId, null);
                 
                 List<DiscountDTO> applicableDiscounts = allDiscounts.stream()
-                    .filter(d -> d.getLoyaltyType() == null) // Only universal discounts
+                    .filter(d -> d.getLoyaltyType() == null) 
                     .map(d -> modelMapper.map(d, DiscountDTO.class))
                     .collect(Collectors.toList());
                     
@@ -342,11 +341,9 @@ public class DiscountService {
             return ResponseEntity.ok(response);
         }
     
-        // Step 3: Get customer tier if exists
         Optional<Discount.LoyaltyTier> tierOptional = discountRepository.findCustomerLoyaltyTierByPhone(phone);
         Discount.LoyaltyTier tier = tierOptional.orElse(null);
-        
-        // Step 4: Get discounts for each item
+      
         Map<String, List<DiscountDTO>> itemDiscounts = new HashMap<>();
         
         for (Long itemId : items.keySet()) {
@@ -364,7 +361,6 @@ public class DiscountService {
             }
         }
         
-        // Build response
         response.put("success", true);
         response.put("discounts", itemDiscounts);
         
@@ -385,30 +381,27 @@ public class DiscountService {
 
     // get all applicable category discounts for a given product ID and customer phone number
     public ResponseEntity<Map<String, Object>> getApplicableCategoryDiscounts(String phone, Map<Long, Integer> items) {
-        // Step 1: Initialize response
+        
         Map<String, Object> response = new HashMap<>();
         
-        // Step 2: Handle case when phone is null or empty
         if (phone == null || phone.trim().isEmpty()) {
             Map<String, List<DiscountDTO>> universalDiscounts = new HashMap<>();
             
             for (Long itemId : items.keySet()) {
-                // Get category ID for this item
+                
                 ResponseEntity<Map<String, Object>> categoryResponse = getCategoryIdByProductId(itemId);
                 
                 if (!categoryResponse.getStatusCode().is2xxSuccessful() || 
                     !(Boolean)categoryResponse.getBody().get("success")) {
-                    continue; // Skip if category not found
+                    continue;
                 }
                 
                 Long categoryId = (Long) categoryResponse.getBody().get("categoryId");
                 
-                // Get all active discounts for this category
                 List<Discount> allDiscounts = discountRepository.findActiveCategoryDiscounts(categoryId, null);
                 
-                // Filter for universal discounts only
                 List<DiscountDTO> applicableDiscounts = allDiscounts.stream()
-                    .filter(d -> d.getLoyaltyType() == null) // Only universal discounts
+                    .filter(d -> d.getLoyaltyType() == null) 
                     .map(d -> {
                         DiscountDTO dto = modelMapper.map(d, DiscountDTO.class);
                         dto.setItemId(itemId);
@@ -431,26 +424,22 @@ public class DiscountService {
             return ResponseEntity.ok(response);
         }
     
-        // Step 3: Get customer tier if exists
         Optional<Discount.LoyaltyTier> tierOptional = discountRepository.findCustomerLoyaltyTierByPhone(phone);
         if (tierOptional.isEmpty()) {
             Map<String, List<DiscountDTO>> universalDiscounts = new HashMap<>();
             
             for (Long itemId : items.keySet()) {
-                // Get category ID for this item
                 ResponseEntity<Map<String, Object>> categoryResponse = getCategoryIdByProductId(itemId);
                 
                 if (!categoryResponse.getStatusCode().is2xxSuccessful() || 
                     !(Boolean)categoryResponse.getBody().get("success")) {
-                    continue; // Skip if category not found
+                    continue;
                 }
                 
                 Long categoryId = (Long) categoryResponse.getBody().get("categoryId");
                 
-                // Get all active discounts for this category
                 List<Discount> allDiscounts = discountRepository.findActiveCategoryDiscounts(categoryId, null);
                 
-                // Filter for universal discounts only
                 List<DiscountDTO> applicableDiscounts = allDiscounts.stream()
                     .filter(d -> d.getLoyaltyType() == null) // Only universal discounts
                     .map(d -> {
@@ -477,24 +466,20 @@ public class DiscountService {
         
         Discount.LoyaltyTier tier = tierOptional.get();
         
-        // Step 4: Get discounts for each item (original logic)
         Map<String, List<DiscountDTO>> categoryDiscounts = new HashMap<>();
         
         for (Long itemId : items.keySet()) {
-            // Get category ID for this item
             ResponseEntity<Map<String, Object>> categoryResponse = getCategoryIdByProductId(itemId);
             
             if (!categoryResponse.getStatusCode().is2xxSuccessful() || 
                 !(Boolean)categoryResponse.getBody().get("success")) {
-                continue; // Skip if category not found
+                continue; 
             }
             
             Long categoryId = (Long) categoryResponse.getBody().get("categoryId");
             
-            // Get all active discounts for this category
             List<Discount> allDiscounts = discountRepository.findActiveCategoryDiscounts(categoryId, null);
             
-            // Filter discounts based on loyalty tier
             List<DiscountDTO> applicableDiscounts = allDiscounts.stream()
                 .filter(d -> 
                     d.getLoyaltyType() == null || 
@@ -512,7 +497,6 @@ public class DiscountService {
             }
         }
         
-        // Build response
         response.put("success", true);
         response.put("discounts", categoryDiscounts);
         response.put("message", categoryDiscounts.isEmpty() ?
@@ -524,20 +508,16 @@ public class DiscountService {
     }
 
     // get all applicable discounts for a given product ID and customer phone number
-
     public ResponseEntity<Map<String, Object>> getAllApplicableDiscounts(String phone, Map<Long, Integer> items) {
-        // Initialize response
+        
         Map<String, Object> response = new HashMap<>();
         
-        // Handle case when phone is null or empty
         if (phone == null || phone.trim().isEmpty()) {
-            // Get universal discounts for all types
             ResponseEntity<Map<String, Object>> itemDiscountsResponse = getApplicableItemDiscounts("", items);
             ResponseEntity<Map<String, Object>> categoryDiscountsResponse = getApplicableCategoryDiscounts("", items);
             
-            // Combine results
             Map<String, Object> allDiscounts = new HashMap<>();
-            allDiscounts.put("loyaltyDiscounts", Collections.emptyList()); // No universal loyalty discounts
+            allDiscounts.put("loyaltyDiscounts", Collections.emptyList()); 
             
             if (itemDiscountsResponse.getStatusCode().is2xxSuccessful() && 
                 itemDiscountsResponse.getBody() != null && 
@@ -555,7 +535,6 @@ public class DiscountService {
                 allDiscounts.put("categoryDiscounts", Collections.emptyMap());
             }
             
-            // Count discounts
             int itemCount = allDiscounts.get("itemDiscounts") instanceof Map ? ((Map<?, ?>) allDiscounts.get("itemDiscounts")).size() : 0;
             int categoryCount = allDiscounts.get("categoryDiscounts") instanceof Map ? ((Map<?, ?>) allDiscounts.get("categoryDiscounts")).size() : 0;
             int totalDiscounts = itemCount + categoryCount;
@@ -573,10 +552,8 @@ public class DiscountService {
             return ResponseEntity.ok(response);
         }
     
-        // Get customer tier if exists
         Optional<Discount.LoyaltyTier> tierOptional = discountRepository.findCustomerLoyaltyTierByPhone(phone);
         if (tierOptional.isEmpty()) {
-            // Customer not found - return universal discounts
             ResponseEntity<Map<String, Object>> itemDiscountsResponse = getApplicableItemDiscounts("", items);
             ResponseEntity<Map<String, Object>> categoryDiscountsResponse = getApplicableCategoryDiscounts("", items);
             
@@ -616,22 +593,17 @@ public class DiscountService {
             return ResponseEntity.ok(response);
         }
         
-        // Original logic for valid customer with tier
         Discount.LoyaltyTier tier = tierOptional.get();
         
-        // Prepare response structure
         response.put("success", true);
         response.put("customerTier", tier.toString());
         
-        // Get all three types of discounts
         ResponseEntity<Map<String, Object>> loyaltyDiscountsResponse = getApplicableLoyaltyDiscounts(phone);
         ResponseEntity<Map<String, Object>> itemDiscountsResponse = getApplicableItemDiscounts(phone, items);
         ResponseEntity<Map<String, Object>> categoryDiscountsResponse = getApplicableCategoryDiscounts(phone, items);
         
-        // Combine results
         Map<String, Object> allDiscounts = new HashMap<>();
         
-        // Process loyalty discounts (returns List)
         if (loyaltyDiscountsResponse.getStatusCode().is2xxSuccessful() && 
             loyaltyDiscountsResponse.getBody() != null && 
             (Boolean) loyaltyDiscountsResponse.getBody().get("success")) {
@@ -640,7 +612,6 @@ public class DiscountService {
             allDiscounts.put("loyaltyDiscounts", Collections.emptyList());
         }
         
-        // Process item discounts (returns Map)
         if (itemDiscountsResponse.getStatusCode().is2xxSuccessful() && 
             itemDiscountsResponse.getBody() != null && 
             (Boolean) itemDiscountsResponse.getBody().get("success")) {
@@ -649,7 +620,6 @@ public class DiscountService {
             allDiscounts.put("itemDiscounts", Collections.emptyMap());
         }
         
-        // Process category discounts (returns Map)
         if (categoryDiscountsResponse.getStatusCode().is2xxSuccessful() && 
             categoryDiscountsResponse.getBody() != null && 
             (Boolean) categoryDiscountsResponse.getBody().get("success")) {
@@ -660,7 +630,6 @@ public class DiscountService {
         
         response.put("discounts", allDiscounts);
         
-        // Count total discounts
         int loyaltyCount = allDiscounts.get("loyaltyDiscounts") instanceof List ? ((List<?>) allDiscounts.get("loyaltyDiscounts")).size() : 0;
         int itemCount = allDiscounts.get("itemDiscounts") instanceof Map ? ((Map<?, ?>) allDiscounts.get("itemDiscounts")).size() : 0;
         int categoryCount = allDiscounts.get("categoryDiscounts") instanceof Map ? ((Map<?, ?>) allDiscounts.get("categoryDiscounts")).size() : 0;
@@ -678,22 +647,19 @@ public class DiscountService {
         return ResponseEntity.ok(response);
     }
 
-    ///////////////////////////////////// calculate total discount amount
-
+    // get applicable discount IDs
     public Map<String, Object> getApplicableDiscountIds(String phone, Map<Long, Integer> items) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Get all applicable discounts first
             Map<String, Object> allDiscounts = getAllApplicableDiscounts(phone, items).getBody();
             List<Map<String, Object>> discountDetails = new ArrayList<>();
             
             BigDecimal totalItemDiscount = BigDecimal.ZERO;
             BigDecimal totalCategoryDiscount = BigDecimal.ZERO;
             BigDecimal totalLoyaltyDiscount = BigDecimal.ZERO;
-            BigDecimal fullSubtotal = BigDecimal.ZERO; // Includes ALL items (discounted or not)
-            BigDecimal discountableSubtotal = BigDecimal.ZERO; // Only includes items with discounts
+            BigDecimal fullSubtotal = BigDecimal.ZERO; 
+            BigDecimal discountableSubtotal = BigDecimal.ZERO; 
     
-            // First pass: Calculate full subtotal (all items)
             for (Map.Entry<Long, Integer> entry : items.entrySet()) {
                 BigDecimal price = discountRepository.findPriceByItemId(entry.getKey())
                     .orElse(BigDecimal.ZERO);
@@ -701,14 +667,12 @@ public class DiscountService {
                     price.multiply(BigDecimal.valueOf(entry.getValue())));
             }
     
-            // Identify which items have discounts
             Set<Long> discountedItemIds = new HashSet<>();
             
             if (allDiscounts != null && allDiscounts.containsKey("discounts")) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> discounts = (Map<String, Object>) allDiscounts.get("discounts");
                 
-                // Check item discounts
                 @SuppressWarnings("unchecked")
                 Map<String, List<DiscountDTO>> itemDiscounts = (Map<String, List<DiscountDTO>>) 
                     discounts.getOrDefault("itemDiscounts", Collections.emptyMap());
@@ -716,7 +680,6 @@ public class DiscountService {
                     .map(Long::parseLong)
                     .collect(Collectors.toSet()));
                 
-                // Check category discounts
                 @SuppressWarnings("unchecked")
                 Map<String, List<DiscountDTO>> categoryDiscounts = (Map<String, List<DiscountDTO>>) 
                     discounts.getOrDefault("categoryDiscounts", Collections.emptyMap());
@@ -725,7 +688,6 @@ public class DiscountService {
                     discountedItemIds.add(itemId);
                 }
                 
-                // Calculate discountable subtotal (only items with discounts)
                 for (Map.Entry<Long, Integer> entry : items.entrySet()) {
                     if (discountedItemIds.contains(entry.getKey())) {
                         BigDecimal price = discountRepository.findPriceByItemId(entry.getKey())
@@ -735,7 +697,6 @@ public class DiscountService {
                     }
                 }
                 
-                // Process item discounts
                 for (Map.Entry<String, List<DiscountDTO>> entry : itemDiscounts.entrySet()) {
                     Long itemId = Long.parseLong(entry.getKey());
                     Integer quantity = items.get(itemId);
@@ -769,7 +730,6 @@ public class DiscountService {
                     }
                 }
                 
-                // Process category discounts
                 for (Map.Entry<String, List<DiscountDTO>> entry : categoryDiscounts.entrySet()) {
                     String[] parts = entry.getKey().split("-");
                     Long itemId = Long.parseLong(parts[0]);
@@ -804,7 +764,6 @@ public class DiscountService {
                     }
                 }
                 
-                // Process loyalty discounts on the discountable subtotal
                 @SuppressWarnings("unchecked")
                 List<DiscountDTO> loyaltyDiscounts = (List<DiscountDTO>) 
                     discounts.getOrDefault("loyaltyDiscounts", Collections.emptyList());
@@ -830,7 +789,6 @@ public class DiscountService {
                     discountDetails.add(discountInfo);
                 }
                 
-                // Calculate final totals
                 BigDecimal finalTotalDiscount = totalItemDiscount.add(totalCategoryDiscount).add(totalLoyaltyDiscount);
                 BigDecimal finalDiscountedPrice = fullSubtotal.subtract(finalTotalDiscount);
                 
@@ -843,7 +801,6 @@ public class DiscountService {
                 response.put("finalTotalDiscount", finalTotalDiscount);
                 response.put("finalDiscountedPrice", finalDiscountedPrice);
             } else {
-                // No discounts, just return full subtotal
                 response.put("success", true);
                 response.put("finalTotalAmount", fullSubtotal);
                 response.put("finalDiscountedPrice", fullSubtotal);
@@ -859,15 +816,14 @@ public class DiscountService {
         return response;
     }
     
+    // calculate discount value
     private BigDecimal calculateDiscountValue(DiscountDTO discount, BigDecimal totalAmount, Integer quantity) {
         try {
             if (discount.getPercentage() != null) {
-                // Handle percentage discount
                 BigDecimal percentage = new BigDecimal(discount.getPercentage().toString());
                 return totalAmount.multiply(percentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
             } else if (discount.getAmount() != null) {
-                // Handle fixed amount discount
                 BigDecimal amount = new BigDecimal(discount.getAmount().toString());
                 return amount.multiply(new BigDecimal(quantity));
             }
@@ -876,15 +832,14 @@ public class DiscountService {
             return BigDecimal.ZERO;
         }
     }
-    //  final discount return with customer info
 
+    //  final discount return with customer info
     public Map<String, Object> getFinalDiscountedOrderWithCustomerInfo(String phone, Map<Long, Integer> items) {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // Handle case when phone is null or empty
             if (phone == null || phone.trim().isEmpty()) {
-                // Get universal discounts
+                
                 Map<String, Object> discountResponse = getApplicableDiscountIds("", items);
                 
                 response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
@@ -900,14 +855,11 @@ public class DiscountService {
                 return response;
             }
     
-            // 1. Get the discount information first
             Map<String, Object> discountResponse = getApplicableDiscountIds(phone, items);
             
-            // 2. Get customer information
             Optional<Customer> customerOpt = discountRepository.findCustomerByPhone(phone);
             
             if (customerOpt.isEmpty()) {
-                // Customer not found - return universal discounts with minimal customer info
                 response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
                 response.put("finalTotalDiscount", discountResponse.get("finalTotalDiscount"));
                 response.put("finalTotalAmount", discountResponse.get("finalTotalAmount"));
@@ -923,10 +875,8 @@ public class DiscountService {
             
             Customer customer = customerOpt.get();
             
-            // 3. Format the title correctly
-            String formattedTitle = "OTHER"; // Default value
+            String formattedTitle = "OTHER"; 
             if (customer.getTitle() != null) {
-                // Handle both String and Enum title types
                 String titleStr = customer.getTitle() instanceof Enum ?
                     ((Enum<?>) customer.getTitle()).name() :
                     customer.getTitle().toString();
@@ -943,7 +893,6 @@ public class DiscountService {
                 }
             }
             
-            // 4. Build the final response
             response.put("finalDiscountedPrice", discountResponse.get("finalDiscountedPrice"));
             response.put("finalTotalDiscount", discountResponse.get("finalTotalDiscount"));
                 response.put("finalTotalAmount", discountResponse.get("finalTotalAmount"));
@@ -964,10 +913,7 @@ public class DiscountService {
         return response;
     }
 
-    ////////////////////////////////////////////// save and update order details
-
     // get customer points by phone number
-
     public Map<String, Object> getCustomerPointsByPhone(String phone) {
         Map<String, Object> response = new HashMap<>();
         
@@ -991,7 +937,6 @@ public class DiscountService {
     }
 
     // update customer points by phone number
-
     public Map<String, Object> updateCustomerPoints(String phone, Double points) {
         Map<String, Object> response = new HashMap<>();
         
@@ -1023,403 +968,348 @@ public class DiscountService {
     }
 
     // get used and earned points by phone number
-    // In DiscountService.java
+    public Map<String, Object> calculatePointsUsageAndEarning(String phone, Map<Long, Integer> items) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+           
+            if (phone == null || phone.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Phone number is required");
+                return response;
+            }
+            
+            Map<String, Object> discountInfo = getApplicableDiscountIds(phone, items);
+            if (!(Boolean) discountInfo.get("success")) {
+                return discountInfo; 
+            }
+            
+            BigDecimal finalTotalAmount = (BigDecimal) discountInfo.get("finalTotalAmount");
+            BigDecimal totalLoyaltyDiscount = (BigDecimal) discountInfo.getOrDefault("totalLoyaltyDiscount", BigDecimal.ZERO);
+           
+            LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
+            double keyPoints = thresholds.points; 
+           
+            Optional<Double> customerPointsOpt = discountRepository.findCustomerPointsByPhone(phone);
+            if (customerPointsOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Customer not found with phone: " + phone);
+                return response;
+            }
+            double customerPoints = customerPointsOpt.get();
+            
+            double earnedPoints = finalTotalAmount.doubleValue() / 100 * keyPoints;
+            
+            double usedPoints = 0;
+            if (customerPoints >= totalLoyaltyDiscount.doubleValue()) {
+                usedPoints = totalLoyaltyDiscount.doubleValue();
+            } else {
+                usedPoints = customerPoints;
+            }
+            
+            response.put("success", true);
+            response.put("finalTotalAmount", finalTotalAmount);
+            response.put("totalLoyaltyDiscount", totalLoyaltyDiscount);
+            response.put("customerCurrentPoints", customerPoints);
+            response.put("keyPointsRate", keyPoints); 
+            response.put("earnedPoints", earnedPoints);
+            response.put("usedPoints", usedPoints);
+            response.put("newPointsBalance", customerPoints - usedPoints + earnedPoints);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error calculating points: " + e.getMessage());
+        }
+        
+        return response;
+    }
 
-public Map<String, Object> calculatePointsUsageAndEarning(String phone, Map<Long, Integer> items) {
-    Map<String, Object> response = new HashMap<>();
     
-    try {
-        // 1. Validate phone number
-        if (phone == null || phone.trim().isEmpty()) {
+    // update customers points after calculations
+    public Map<String, Object> updateCustomerPointsAfterPurchase(String phone, Map<Long, Integer> items) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            Map<String, Object> pointsCalculation = calculatePointsUsageAndEarning(phone, items);
+            
+            if (!(Boolean) pointsCalculation.get("success")) {
+                return pointsCalculation; 
+            }
+          
+            double newPointsBalance = (double) pointsCalculation.get("newPointsBalance");
+            
+            Map<String, Object> updateResult = updateCustomerPoints(phone, newPointsBalance);
+            
+            if (!(Boolean) updateResult.get("success")) {
+                return updateResult; 
+            }
+            
+            response.putAll(pointsCalculation);
+            response.put("message", "Customer points updated successfully");
+            
+        } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Phone number is required");
-            return response;
+            response.put("message", "Error updating customer points: " + e.getMessage());
         }
         
-        // 2. Get discount information to get total amount and loyalty discount
-        Map<String, Object> discountInfo = getApplicableDiscountIds(phone, items);
-        if (!(Boolean) discountInfo.get("success")) {
-            return discountInfo; // Return the error if discount calculation failed
-        }
-        
-        BigDecimal finalTotalAmount = (BigDecimal) discountInfo.get("finalTotalAmount");
-        BigDecimal totalLoyaltyDiscount = (BigDecimal) discountInfo.getOrDefault("totalLoyaltyDiscount", BigDecimal.ZERO);
-        
-        // 3. Get loyalty thresholds to get keypoints
-        LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
-        double keyPoints = thresholds.points; // Points earned per 100 rupees
-        
-        // 4. Get customer's current points
-        Optional<Double> customerPointsOpt = discountRepository.findCustomerPointsByPhone(phone);
-        if (customerPointsOpt.isEmpty()) {
-            response.put("success", false);
-            response.put("message", "Customer not found with phone: " + phone);
-            return response;
-        }
-        double customerPoints = customerPointsOpt.get();
-        
-        // 5. Calculate earned points (points earned from this purchase)
-        double earnedPoints = finalTotalAmount.doubleValue() / 100 * keyPoints;
-        
-        // 6. Calculate used points (points redeemed in this purchase)
-        double usedPoints = 0;
-        if (customerPoints >= totalLoyaltyDiscount.doubleValue()) {
-            usedPoints = totalLoyaltyDiscount.doubleValue();
-        } else {
-            usedPoints = customerPoints;
-        }
-        
-        // 7. Prepare response
-        response.put("success", true);
-        response.put("finalTotalAmount", finalTotalAmount);
-        response.put("totalLoyaltyDiscount", totalLoyaltyDiscount);
-        response.put("customerCurrentPoints", customerPoints);
-        response.put("keyPointsRate", keyPoints); // Points per 100 rupees
-        response.put("earnedPoints", earnedPoints);
-        response.put("usedPoints", usedPoints);
-        response.put("newPointsBalance", customerPoints - usedPoints + earnedPoints);
-        
-    } catch (Exception e) {
-        response.put("success", false);
-        response.put("message", "Error calculating points: " + e.getMessage());
+        return response;
     }
     
-    return response;
-}
-
-    
-// update customers points after calculations
-
-public Map<String, Object> updateCustomerPointsAfterPurchase(String phone, Map<Long, Integer> items) {
-    Map<String, Object> response = new HashMap<>();
-    
-    try {
-        // 1. Calculate points usage and earning
-        Map<String, Object> pointsCalculation = calculatePointsUsageAndEarning(phone, items);
+    // add order details
+    public Map<String, Object> getCompleteDiscountAndPointsInfo(String phone, Map<Long, Integer> items) {
+        Map<String, Object> response = new HashMap<>();
         
-        if (!(Boolean) pointsCalculation.get("success")) {
-            return pointsCalculation; // Return error if calculation failed
-        }
-        
-        // 2. Get the new points balance
-        double newPointsBalance = (double) pointsCalculation.get("newPointsBalance");
-        
-        // 3. Update customer points
-        Map<String, Object> updateResult = updateCustomerPoints(phone, newPointsBalance);
-        
-        if (!(Boolean) updateResult.get("success")) {
-            return updateResult; // Return error if update failed
-        }
-        
-        // 4. Return the complete points information
-        response.putAll(pointsCalculation);
-        response.put("message", "Customer points updated successfully");
-        
-    } catch (Exception e) {
-        response.put("success", false);
-        response.put("message", "Error updating customer points: " + e.getMessage());
-    }
-    
-    return response;
-}
-    
-// add order details
-
-
-public Map<String, Object> getCompleteDiscountAndPointsInfo(String phone, Map<Long, Integer> items) {
-    Map<String, Object> response = new HashMap<>();
-    
-    try {
-        // 1. Get customer information
-        Optional<Customer> customerOpt = discountRepository.findCustomerByPhone(phone);
-        if (customerOpt.isEmpty()) {
+        try {
+            Optional<Customer> customerOpt = discountRepository.findCustomerByPhone(phone);
+            if (customerOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Customer not found");
+                return response;
+            }
+            Customer customer = customerOpt.get();
+            Map<String, Object> discountInfo = getApplicableDiscountIds(phone, items);
+            if (!(Boolean) discountInfo.get("success")) {
+                return discountInfo;
+            }
+            
+            Map<String, Object> pointsInfo = calculatePointsUsageAndEarning(phone, items);
+            if (!(Boolean) pointsInfo.get("success")) {
+                return pointsInfo;
+            }
+            
+            Map<String, Object> customerPoints = getCustomerPointsByPhone(phone);
+            if (!(Boolean) customerPoints.get("success")) {
+                return customerPoints;
+            }
+            
+            Map<String, Object> finalOrderInfo = getFinalDiscountedOrderWithCustomerInfo(phone, items);
+            if (!(Boolean) finalOrderInfo.get("success")) {
+                return finalOrderInfo;
+            }
+            
+            Map<String, Object> allDiscounts = getAllApplicableDiscounts(phone, items).getBody();
+            
+            response.put("success", true);
+            
+            Optional<Long> customerIdOpt = discountRepository.findCustomerIdByPhone(phone);
+            if (customerIdOpt.isPresent()) {
+                response.put("customerId", customerIdOpt.get());
+            } else {
+                response.put("customerId", null);
+            }
+            
+            response.put("customerName", customer.getName());
+            response.put("customerPhone", phone);
+            response.put("customerTier", customer.getTier() != null ? 
+                        customer.getTier().toString() : "NONE");
+            
+            response.put("totalItemDiscount", discountInfo.get("totalItemDiscount"));
+            response.put("totalCategoryDiscount", discountInfo.get("totalCategoryDiscount"));
+            response.put("totalLoyaltyDiscount", discountInfo.get("totalLoyaltyDiscount"));
+            response.put("finalTotalAmount", discountInfo.get("finalTotalAmount"));
+            response.put("finalDiscountedPrice", discountInfo.get("finalDiscountedPrice"));
+            
+            response.put("currentPoints", customerPoints.get("points"));
+            response.put("usedPoints", pointsInfo.get("usedPoints"));
+            response.put("earnedPoints", pointsInfo.get("earnedPoints"));
+            response.put("newPointsBalance", pointsInfo.get("newPointsBalance"));
+            response.put("keyPointsRate", pointsInfo.get("keyPointsRate"));
+            
+            List<Map<String, Object>> itemDetails = new ArrayList<>();
+            if (discountInfo.containsKey("discounts")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> discounts = (List<Map<String, Object>>) discountInfo.get("discounts");
+                
+                Map<Long, List<Map<String, Object>>> itemDiscountsMap = discounts.stream()
+                    .filter(d -> d.containsKey("itemId"))
+                    .collect(Collectors.groupingBy(
+                        d -> ((Number) d.get("itemId")).longValue(),
+                        Collectors.toList()
+                    ));
+                
+                for (Map.Entry<Long, Integer> entry : items.entrySet()) {
+                    Long itemId = entry.getKey();
+                    Integer quantity = entry.getValue();
+                    
+                    Map<String, Object> itemDetail = new HashMap<>();
+                    itemDetail.put("itemId", itemId);
+                    itemDetail.put("quantity", quantity);
+                   
+                    Optional<BigDecimal> priceOpt = discountRepository.findPriceByItemId(itemId);
+                    if (priceOpt.isPresent()) {
+                        BigDecimal price = priceOpt.get();
+                        BigDecimal totalAmount = price.multiply(BigDecimal.valueOf(quantity));
+                        itemDetail.put("price", price);
+                        itemDetail.put("totalAmount", totalAmount);
+                        
+                        if (itemDiscountsMap.containsKey(itemId)) {
+                            List<Map<String, Object>> itemDiscounts = itemDiscountsMap.get(itemId);
+                            itemDetail.put("discounts", itemDiscounts);
+                            
+                            BigDecimal itemTotalDiscount = itemDiscounts.stream()
+                                .map(d -> (BigDecimal) d.get("totalDiscount"))
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            itemDetail.put("totalDiscount", itemTotalDiscount);
+                        } else {
+                            itemDetail.put("discounts", Collections.emptyList());
+                            itemDetail.put("totalDiscount", BigDecimal.ZERO);
+                        }
+                    }
+                    
+                    itemDetails.add(itemDetail);
+                }
+            }
+            
+            response.put("itemDetails", itemDetails);
+            
+            if (allDiscounts != null && allDiscounts.containsKey("discounts")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> discounts = (Map<String, Object>) allDiscounts.get("discounts");
+                response.put("loyaltyDiscounts", discounts.getOrDefault("loyaltyDiscounts", Collections.emptyList()));
+            } else {
+                response.put("loyaltyDiscounts", Collections.emptyList());
+            }
+            
+        } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Customer not found");
-            return response;
+            response.put("message", "Error processing request: " + e.getMessage());
         }
-        Customer customer = customerOpt.get();
         
-        // 2. Get all discount information
-        Map<String, Object> discountInfo = getApplicableDiscountIds(phone, items);
+        return response;
+    }
+
+    // update order details
+    @Transactional
+    public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> items) {
+        Map<String, Object> discountInfo = getCompleteDiscountAndPointsInfo(phone, items);
+        
         if (!(Boolean) discountInfo.get("success")) {
             return discountInfo;
         }
-        
-        // 3. Get points calculation
-        Map<String, Object> pointsInfo = calculatePointsUsageAndEarning(phone, items);
-        if (!(Boolean) pointsInfo.get("success")) {
-            return pointsInfo;
-        }
-        
-        // 4. Get customer points
-        Map<String, Object> customerPoints = getCustomerPointsByPhone(phone);
-        if (!(Boolean) customerPoints.get("success")) {
-            return customerPoints;
-        }
-        
-        // 5. Get final order with customer info
-        Map<String, Object> finalOrderInfo = getFinalDiscountedOrderWithCustomerInfo(phone, items);
-        if (!(Boolean) finalOrderInfo.get("success")) {
-            return finalOrderInfo;
-        }
-        
-        // 6. Get all applicable discounts (for detailed discount info)
-        Map<String, Object> allDiscounts = getAllApplicableDiscounts(phone, items).getBody();
-        
-        // 7. Compile all the information
-        response.put("success", true);
-        
-        // Get customer ID from repository if needed
-        Optional<Long> customerIdOpt = discountRepository.findCustomerIdByPhone(phone);
-        if (customerIdOpt.isPresent()) {
-            response.put("customerId", customerIdOpt.get());
-        } else {
-            response.put("customerId", null);
-        }
-        
-        response.put("customerName", customer.getName());
-        response.put("customerPhone", phone);
-        response.put("customerTier", customer.getTier() != null ? 
-                     customer.getTier().toString() : "NONE");
-        
-        // Rest of the method remains the same...
-        // Discount amounts
-        response.put("totalItemDiscount", discountInfo.get("totalItemDiscount"));
-        response.put("totalCategoryDiscount", discountInfo.get("totalCategoryDiscount"));
-        response.put("totalLoyaltyDiscount", discountInfo.get("totalLoyaltyDiscount"));
-        response.put("finalTotalAmount", discountInfo.get("finalTotalAmount"));
-        response.put("finalDiscountedPrice", discountInfo.get("finalDiscountedPrice"));
-        
-        // Points information
-        response.put("currentPoints", customerPoints.get("points"));
-        response.put("usedPoints", pointsInfo.get("usedPoints"));
-        response.put("earnedPoints", pointsInfo.get("earnedPoints"));
-        response.put("newPointsBalance", pointsInfo.get("newPointsBalance"));
-        response.put("keyPointsRate", pointsInfo.get("keyPointsRate"));
-        
-        // Item details with discounts
-        List<Map<String, Object>> itemDetails = new ArrayList<>();
-        if (discountInfo.containsKey("discounts")) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> discounts = (List<Map<String, Object>>) discountInfo.get("discounts");
-            
-            // Group discounts by itemId
-            Map<Long, List<Map<String, Object>>> itemDiscountsMap = discounts.stream()
-                .filter(d -> d.containsKey("itemId"))
-                .collect(Collectors.groupingBy(
-                    d -> ((Number) d.get("itemId")).longValue(),
-                    Collectors.toList()
-                ));
-            
-            // Create item details
-            for (Map.Entry<Long, Integer> entry : items.entrySet()) {
-                Long itemId = entry.getKey();
-                Integer quantity = entry.getValue();
-                
-                Map<String, Object> itemDetail = new HashMap<>();
-                itemDetail.put("itemId", itemId);
-                itemDetail.put("quantity", quantity);
-                
-                // Get price
-                Optional<BigDecimal> priceOpt = discountRepository.findPriceByItemId(itemId);
-                if (priceOpt.isPresent()) {
-                    BigDecimal price = priceOpt.get();
-                    BigDecimal totalAmount = price.multiply(BigDecimal.valueOf(quantity));
-                    itemDetail.put("price", price);
-                    itemDetail.put("totalAmount", totalAmount);
-                    
-                    // Add discounts if any
-                    if (itemDiscountsMap.containsKey(itemId)) {
-                        List<Map<String, Object>> itemDiscounts = itemDiscountsMap.get(itemId);
-                        itemDetail.put("discounts", itemDiscounts);
-                        
-                        // Calculate total discount for this item
-                        BigDecimal itemTotalDiscount = itemDiscounts.stream()
-                            .map(d -> (BigDecimal) d.get("totalDiscount"))
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                        itemDetail.put("totalDiscount", itemTotalDiscount);
-                    } else {
-                        itemDetail.put("discounts", Collections.emptyList());
-                        itemDetail.put("totalDiscount", BigDecimal.ZERO);
-                    }
-                }
-                
-                itemDetails.add(itemDetail);
-            }
-        }
-        
-        response.put("itemDetails", itemDetails);
-        
-        // Add loyalty discounts if any
-        if (allDiscounts != null && allDiscounts.containsKey("discounts")) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> discounts = (Map<String, Object>) allDiscounts.get("discounts");
-            response.put("loyaltyDiscounts", discounts.getOrDefault("loyaltyDiscounts", Collections.emptyList()));
-        } else {
-            response.put("loyaltyDiscounts", Collections.emptyList());
-        }
-        
-    } catch (Exception e) {
-        response.put("success", false);
-        response.put("message", "Error processing request: " + e.getMessage());
-    }
-    
-    return response;
-}
 
-// update order details
-
-
-@Transactional
-public Map<String, Object> saveOrderDetails(String phone, Map<Long, Integer> items) {
-    // Get complete discount info first
-    Map<String, Object> discountInfo = getCompleteDiscountAndPointsInfo(phone, items);
-    
-    if (!(Boolean) discountInfo.get("success")) {
-        return discountInfo;
-    }
-
-    // First update customer points
-    Map<String, Object> pointsUpdateResult = updateCustomerPointsAfterPurchase(phone, items);
-    if (!(Boolean) pointsUpdateResult.get("success")) {
-        return pointsUpdateResult;
-    }
-
-    // Update customer loyalty status based on new points
-    Map<String, Object> loyaltyUpdateResult = updateCustomerLoyaltyStatus(phone);
-    if (!(Boolean) loyaltyUpdateResult.get("success")) {
-        return loyaltyUpdateResult;
-    }
-
-    // Get the updated tier from the loyalty update result
-    String loyaltyTier = (String) loyaltyUpdateResult.get("newTier");
-
-    // Extract common order details
-    Long customerId = (Long) discountInfo.get("customerId");
-    Double pointsEarned = (Double) discountInfo.get("earnedPoints");
-    Double totalLoyaltyDiscount = ((Number) discountInfo.get("totalLoyaltyDiscount")).doubleValue();
-    Double totalCategoryDiscount = ((Number) discountInfo.get("totalCategoryDiscount")).doubleValue();
-    
-    // Generate a unique order ID (using current timestamp and customer ID)
-    String orderId = "ORD-" + System.currentTimeMillis() + "-" + customerId;
-    
-    // Get points rate from loyalty thresholds
-    LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
-    double pointsRate = thresholds.points;
-    
-    // Save each item
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> itemDetails = (List<Map<String, Object>>) discountInfo.get("itemDetails");
-    
-    for (Map<String, Object> item : itemDetails) {
-        Long itemId = ((Number) item.get("itemId")).longValue();
-        Double amount = ((Number) item.get("totalAmount")).doubleValue();
-        Double itemDiscount = ((Number) item.get("totalDiscount")).doubleValue();
-        
-        // Get discount ID if available (from item discounts)
-        Long discountId = null;
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> discounts = (List<Map<String, Object>>) item.get("discounts");
-        if (discounts != null && !discounts.isEmpty()) {
-            discountId = ((Number) discounts.get(0).get("id")).longValue();
+        Map<String, Object> pointsUpdateResult = updateCustomerPointsAfterPurchase(phone, items);
+        if (!(Boolean) pointsUpdateResult.get("success")) {
+            return pointsUpdateResult;
         }
-        
-        // Calculate category and loyalty discounts for this item
-        Double categoryDiscount = totalCategoryDiscount / itemDetails.size();
-        Double loyaltyDiscount = totalLoyaltyDiscount / itemDetails.size();
-        Double totalDiscount = itemDiscount + categoryDiscount + loyaltyDiscount;
-        
-        // Calculate points earned for this specific item
-        Double itemPointsEarned = (amount / 100) * pointsRate;
-        
-        discountRepository.saveOrderDetails(
-            orderId,  // Same order ID for all items
-            customerId,
-            itemId,
-            discountId,
-            LocalDateTime.now(),
-            amount,
-            totalDiscount,
-            itemDiscount,
-            categoryDiscount,
-            loyaltyDiscount,
-            loyaltyTier,
-            itemPointsEarned
-        );
-    }
-    
-    // Combine all results
-    Map<String, Object> response = new HashMap<>();
-    response.putAll(discountInfo);
-    response.putAll(pointsUpdateResult);
-    response.putAll(loyaltyUpdateResult);
-    response.put("orderId", orderId);  // Include the order ID in the response
-    response.put("message", "Order details, points, and loyalty status updated successfully");
-    
-    return response;
-}
 
-// update loyalty tier
+        Map<String, Object> loyaltyUpdateResult = updateCustomerLoyaltyStatus(phone);
+        if (!(Boolean) loyaltyUpdateResult.get("success")) {
+            return loyaltyUpdateResult;
+        }
 
-public Map<String, Object> updateCustomerLoyaltyStatus(String phone) {
-    Map<String, Object> response = new HashMap<>();
-    
-    try {
-        // 1. Validate phone number
-        if (phone == null || phone.trim().isEmpty()) {
-            response.put("success", false);
-            response.put("message", "Phone number is required");
-            return response;
-        }
+        String loyaltyTier = (String) loyaltyUpdateResult.get("newTier");
+
+        Long customerId = (Long) discountInfo.get("customerId");
+        Double pointsEarned = (Double) discountInfo.get("earnedPoints");
+        Double totalLoyaltyDiscount = ((Number) discountInfo.get("totalLoyaltyDiscount")).doubleValue();
+        Double totalCategoryDiscount = ((Number) discountInfo.get("totalCategoryDiscount")).doubleValue();
+       
+        String orderId = "ORD-" + System.currentTimeMillis() + "-" + customerId;
         
-        // 2. Get customer's current points
-        Optional<Double> customerPointsOpt = discountRepository.findCustomerPointsByPhone(phone);
-        if (customerPointsOpt.isEmpty()) {
-            response.put("success", false);
-            response.put("message", "Customer not found with phone: " + phone);
-            return response;
-        }
-        double customerPoints = customerPointsOpt.get();
-        
-        // 3. Get loyalty thresholds
         LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
+        double pointsRate = thresholds.points;
         
-        // 4. Determine new tier based on points
-        Tier newTier;
-        if (customerPoints >= thresholds.gold) {
-            newTier = Tier.GOLD;
-        } else if (customerPoints >= thresholds.silver) {
-            newTier = Tier.SILVER;
-        } else if (customerPoints >= thresholds.bronze) {
-            newTier = Tier.BRONZE;
-        } else {
-            newTier = Tier.NOTLOYALTY;
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> itemDetails = (List<Map<String, Object>>) discountInfo.get("itemDetails");
+        
+        for (Map<String, Object> item : itemDetails) {
+            Long itemId = ((Number) item.get("itemId")).longValue();
+            Double amount = ((Number) item.get("totalAmount")).doubleValue();
+            Double itemDiscount = ((Number) item.get("totalDiscount")).doubleValue();
+            
+            Long discountId = null;
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> discounts = (List<Map<String, Object>>) item.get("discounts");
+            if (discounts != null && !discounts.isEmpty()) {
+                discountId = ((Number) discounts.get(0).get("id")).longValue();
+            }
+            
+            Double categoryDiscount = totalCategoryDiscount / itemDetails.size();
+            Double loyaltyDiscount = totalLoyaltyDiscount / itemDetails.size();
+            Double totalDiscount = itemDiscount + categoryDiscount + loyaltyDiscount;
+           
+            Double itemPointsEarned = (amount / 100) * pointsRate;
+            
+            discountRepository.saveOrderDetails(
+                orderId,  
+                customerId,
+                itemId,
+                discountId,
+                LocalDateTime.now(),
+                amount,
+                totalDiscount,
+                itemDiscount,
+                categoryDiscount,
+                loyaltyDiscount,
+                loyaltyTier,
+                itemPointsEarned
+            );
         }
         
-        // 5. Update customer tier
-        discountRepository.updateCustomerTier(phone, newTier);
+        Map<String, Object> response = new HashMap<>();
+        response.putAll(discountInfo);
+        response.putAll(pointsUpdateResult);
+        response.putAll(loyaltyUpdateResult);
+        response.put("orderId", orderId);  
+        response.put("message", "Order details, points, and loyalty status updated successfully");
         
-        // 6. Get updated customer info
-        Optional<Customer> customerOpt = discountRepository.findCustomerByPhone(phone);
-        if (customerOpt.isPresent()) {
-            Customer customer = customerOpt.get();
-            response.put("success", true);
-            response.put("message", "Customer loyalty status updated successfully");
-            response.put("phone", phone);
-            response.put("points", customer.getPoints());
-            response.put("tier", customer.getTier());
-            response.put("newTier", newTier.toString());
-        } else {
-            response.put("success", false);
-            response.put("message", "Customer not found after update");
-        }
-        
-    } catch (Exception e) {
-        response.put("success", false);
-        response.put("message", "Error updating customer loyalty status: " + e.getMessage());
+        return response;
     }
-    
-    return response;
-}
+
+    // update loyalty tier
+    public Map<String, Object> updateCustomerLoyaltyStatus(String phone) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            if (phone == null || phone.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Phone number is required");
+                return response;
+            }
+            
+            Optional<Double> customerPointsOpt = discountRepository.findCustomerPointsByPhone(phone);
+            if (customerPointsOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Customer not found with phone: " + phone);
+                return response;
+            }
+            double customerPoints = customerPointsOpt.get();
+            
+            LoyaltyThresholdsDTO thresholds = getLoyaltyThresholds();
+            
+            Tier newTier;
+            if (customerPoints >= thresholds.gold) {
+                newTier = Tier.GOLD;
+            } else if (customerPoints >= thresholds.silver) {
+                newTier = Tier.SILVER;
+            } else if (customerPoints >= thresholds.bronze) {
+                newTier = Tier.BRONZE;
+            } else {
+                newTier = Tier.NOTLOYALTY;
+            }
+            
+            discountRepository.updateCustomerTier(phone, newTier);
+            
+            Optional<Customer> customerOpt = discountRepository.findCustomerByPhone(phone);
+            if (customerOpt.isPresent()) {
+                Customer customer = customerOpt.get();
+                response.put("success", true);
+                response.put("message", "Customer loyalty status updated successfully");
+                response.put("phone", phone);
+                response.put("points", customer.getPoints());
+                response.put("tier", customer.getTier());
+                response.put("newTier", newTier.toString());
+            } else {
+                response.put("success", false);
+                response.put("message", "Customer not found after update");
+            }
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error updating customer loyalty status: " + e.getMessage());
+        }
+        
+        return response;
+    }
 
 }
