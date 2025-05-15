@@ -14,15 +14,12 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        // Allow requests from both Vite and Create React App default ports
-        config.setAllowedOrigins(List.of(
-            "http://localhost:5173",  // Vite default
-            "http://localhost:3000"   // React default
-        ));
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+      
+        
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // Allow all headers needed for API requests
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        config.setExposedHeaders(List.of("Content-Disposition"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
