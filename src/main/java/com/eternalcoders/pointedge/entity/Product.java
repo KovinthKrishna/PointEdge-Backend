@@ -20,6 +20,7 @@ public class Product {
 
     private String name;
 
+    @Column(unique = true)
     private String barcode;
 
     private double price;
