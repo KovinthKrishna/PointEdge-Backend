@@ -13,7 +13,6 @@ import java.util.Optional;
 @Repository
 public interface OrderDetailsRepository extends JpaRepository<OrderDetails, Long> {
     
-    // Basic CRUD methods inherited from JpaRepository
     
     // Find orders by customer
     List<OrderDetails> findByCustomerId(Long customerId);
@@ -90,84 +89,81 @@ public interface OrderDetailsRepository extends JpaRepository<OrderDetails, Long
     @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.totalDiscount >= :threshold AND o.datetime BETWEEN :startDate AND :endDate")
     Long countDiscountsAboveOrEqualThreshold(@Param("threshold") Double threshold, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // Add these methods to your OrderDetailsRepository interface
+       // Count orders with item discount in date range
+       @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Long countOrdersWithItemDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-// Count orders with item discount in date range
-@Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Long countOrdersWithItemDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       // Count orders with category discount in date range
+       @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Long countOrdersWithCategoryDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-// Count orders with category discount in date range
-@Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Long countOrdersWithCategoryDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       // Count orders with loyalty discount in date range
+       @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Long countOrdersWithLoyaltyDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-// Count orders with loyalty discount in date range
-@Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Long countOrdersWithLoyaltyDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-
-@Query("SELECT c.tier AS tier, COUNT(DISTINCT c.id) AS count " +
-       "FROM OrderDetails o JOIN o.customer c " +
-       "WHERE o.datetime BETWEEN :startDate AND :endDate " +
-       "GROUP BY c.tier")
-List<Object[]> countCustomersByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
-                                               @Param("endDate") LocalDateTime endDate);
-@Query("SELECT COUNT(c.id) FROM Customer c")
-Long countTotalCustomers();
-
-// Add these methods to OrderDetailsRepository
-@Query("SELECT o.loyaltyTier AS tier, COUNT(o) AS count " +
-       "FROM OrderDetails o " +
-       "WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
-       "GROUP BY o.loyaltyTier")
-List<Object[]> countOrdersWithLoyaltyDiscountByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
-                                                              @Param("endDate") LocalDateTime endDate);
-
-@Query("SELECT o.loyaltyTier AS tier, SUM(o.loyaltyDiscount) AS totalDiscount " +
-       "FROM OrderDetails o " +
-       "WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
-       "GROUP BY o.loyaltyTier")
-List<Object[]> sumLoyaltyDiscountByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
+       @Query("SELECT c.tier AS tier, COUNT(DISTINCT c.id) AS count " +
+              "FROM OrderDetails o JOIN o.customer c " +
+              "WHERE o.datetime BETWEEN :startDate AND :endDate " +
+              "GROUP BY c.tier")
+       List<Object[]> countCustomersByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
                                                  @Param("endDate") LocalDateTime endDate);
+       @Query("SELECT COUNT(c.id) FROM Customer c")
+       Long countTotalCustomers();
 
-// Add to OrderDetailsRepository interface
-@Query("SELECT o.itemId, SUM(o.amount) as totalAmount, SUM(o.itemDiscount) as totalDiscount, COUNT(o) as count " +
-       "FROM OrderDetails o " +
-       "WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
-       "GROUP BY o.itemId " +
-       "ORDER BY count DESC")
-List<Object[]> findItemDiscountAnalyticsByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+      // Count orders with loyalty discount by tier in date range
+       @Query("SELECT o.loyaltyTier AS tier, COUNT(o) AS count " +
+              "FROM OrderDetails o " +
+              "WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
+              "GROUP BY o.loyaltyTier")
+       List<Object[]> countOrdersWithLoyaltyDiscountByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                               @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT p.name FROM Product p WHERE p.id = :id")
-    Optional<String> findNameById(@Param("id") Long id);
+       // Sum loyalty discount by tier in date range
+       @Query("SELECT o.loyaltyTier AS tier, SUM(o.loyaltyDiscount) AS totalDiscount " +
+              "FROM OrderDetails o " +
+              "WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
+              "GROUP BY o.loyaltyTier")
+       List<Object[]> sumLoyaltyDiscountByTierInDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                        @Param("endDate") LocalDateTime endDate);
 
-// add category discount methods
+       // Item discount analytics
+       @Query("SELECT o.itemId, SUM(o.amount) as totalAmount, SUM(o.itemDiscount) as totalDiscount, COUNT(o) as count " +
+              "FROM OrderDetails o " +
+              "WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
+              "GROUP BY o.itemId " +
+              "ORDER BY count DESC")
+       List<Object[]> findItemDiscountAnalyticsByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT p.category.id, SUM(o.amount) as totalAmount, SUM(o.categoryDiscount) as totalDiscount, COUNT(o) as count " +
-           "FROM OrderDetails o JOIN Product p ON o.itemId = p.id " +
-           "WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
-           "GROUP BY p.category.id " +
-           "ORDER BY count DESC")
-    List<Object[]> findCategoryDiscountAnalyticsByDateRange(@Param("startDate") LocalDateTime startDate, 
-                                                          @Param("endDate") LocalDateTime endDate);
+       @Query("SELECT p.name FROM Product p WHERE p.id = :id")
+       Optional<String> findNameById(@Param("id") Long id);
 
-    @Query("SELECT c.name FROM Category c WHERE c.id = :id")
-    Optional<String> findCategoryNameById(@Param("id") Long id);
+       // Category discount analytics
+       @Query("SELECT p.category.id, SUM(o.amount) as totalAmount, SUM(o.categoryDiscount) as totalDiscount, COUNT(o) as count " +
+              "FROM OrderDetails o JOIN Product p ON o.itemId = p.id " +
+              "WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate " +
+              "GROUP BY p.category.id " +
+              "ORDER BY count DESC")
+       List<Object[]> findCategoryDiscountAnalyticsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                               @Param("endDate") LocalDateTime endDate);
+       // Category name by ID
+       @Query("SELECT c.name FROM Category c WHERE c.id = :id")
+       Optional<String> findCategoryNameById(@Param("id") Long id);
 
-    
-// Add to OrderDetailsRepository interface
-@Query("SELECT SUM(o.pointsEarned) FROM OrderDetails o WHERE o.datetime BETWEEN :startDate AND :endDate")
-Double sumPointsEarnedInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       // Loyalty discount analytics
+       @Query("SELECT SUM(o.pointsEarned) FROM OrderDetails o WHERE o.datetime BETWEEN :startDate AND :endDate")
+       Double sumPointsEarnedInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.datetime BETWEEN :startDate AND :endDate")
-Double sumTotalAmountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       @Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.datetime BETWEEN :startDate AND :endDate")
+       Double sumTotalAmountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Double sumAmountWithLoyaltyDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       @Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Double sumAmountWithLoyaltyDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Double sumAmountWithItemDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       @Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.itemDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Double sumAmountWithItemDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-@Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
-Double sumAmountWithCategoryDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    
+       @Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
+       Double sumAmountWithCategoryDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+       
 }
 
