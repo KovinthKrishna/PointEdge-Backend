@@ -46,7 +46,6 @@ public class Customer {
         OTHER;
 
         int toUpperCase() {
-            // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'toUpperCase'");
         }
     }
