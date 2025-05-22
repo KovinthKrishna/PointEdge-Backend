@@ -16,10 +16,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/attendances")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175"})
+@CrossOrigin
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
@@ -62,9 +63,9 @@ public class AttendanceController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<List<AttendanceDTO>> searchAttendances(@RequestBody AttendanceSearchDTO searchDTO) {
+    public ResponseEntity<?> searchAttendances(@RequestBody AttendanceSearchDTO searchDTO) {
         try {
-            // Get all attendances
+
             List<Attendance> attendances = attendanceService.getAllAttendances();
             
             // Apply employee ID filter if provided
@@ -89,13 +90,29 @@ public class AttendanceController {
                     .collect(Collectors.toList());
                     
             return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            // Log the error
-            System.err.println("Error in search: " + e.getMessage());
-            e.printStackTrace(); // Add stack trace for better debugging
-            return ResponseEntity.status(500).build();
+        } catch (ResourceNotFoundException e) {
+            
+            return ResponseEntity.status(404)
+            .body(Collections.emptyList());
         }
     }
+
+    @GetMapping("/employee/{employeeId}/date-range")
+public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployeeAndDateRange(
+        @PathVariable Long employeeId,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+    try {
+        Employee employee = employeeService.getEmployeeById(employeeId);
+        List<Attendance> attendances = attendanceService.findByEmployeeAndDateBetween(employee, startDate, endDate);
+        List<AttendanceDTO> attendanceDTOs = attendances.stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(attendanceDTOs);
+    } catch (ResourceNotFoundException e) {
+        return ResponseEntity.notFound().build();
+    }
+}
 
     @PostMapping
     public ResponseEntity<AttendanceDTO> createAttendance(@RequestBody AttendanceDTO dto) {

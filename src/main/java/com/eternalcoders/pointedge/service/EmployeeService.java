@@ -36,6 +36,7 @@ public class EmployeeService {
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
+        employee.setLocation(employeeDTO.getLocation());
         return employeeRepository.save(employee);
     }
 
@@ -45,6 +46,7 @@ public class EmployeeService {
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
+        employee.setLocation(employeeDTO.getLocation());
         return employeeRepository.save(employee);
     }
 

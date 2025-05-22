@@ -43,6 +43,10 @@ public class AttendanceService {
         attendanceRepository.deleteById(id);
     }
 
+    public List<Attendance> findByEmployeeAndDateBetween(Employee employee, LocalDate startDate, LocalDate endDate) {
+    return attendanceRepository.findByEmployeeAndDateBetween(employee, startDate, endDate);
+}
+
     public List<Attendance> findByEmployee(Employee employee) {
         return attendanceRepository.findByEmployee(employee);
     }

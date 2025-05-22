@@ -13,5 +13,6 @@ public class EmployeeDTO {
     private String name;
     private String role;
     private String avatar;
+    private String location;
     private EmployeeStatus status;
 }

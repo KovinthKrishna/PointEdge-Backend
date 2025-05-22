@@ -83,16 +83,8 @@ public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
         dto.setRole(employee.getRole());
         dto.setAvatar(employee.getAvatar());
         dto.setStatus(employee.getStatus());
+        dto.setLocation(employee.getLocation());
         return dto;
     }
 
-    private Employee convertToEntity(EmployeeDTO dto) {
-        Employee employee = new Employee();
-        employee.setId(dto.getId());
-        employee.setName(dto.getName());
-        employee.setRole(dto.getRole());
-        employee.setAvatar(dto.getAvatar());
-        employee.setStatus(dto.getStatus());
-        return employee;
-    }
 }

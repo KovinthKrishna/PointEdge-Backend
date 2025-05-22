@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/performance")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin
 public class PerformanceController {
 
     private final PerformanceService performanceService;
@@ -32,6 +32,7 @@ public class PerformanceController {
         List<PerformanceDTO> topPerformers = performanceService.getTopPerformers(startDate, endDate, sortBy, sortDirection);
         return ResponseEntity.ok(topPerformers);
     }
+    
 
     @GetMapping("/search")
     public ResponseEntity<List<PerformanceDTO>> searchEmployeePerformance(
