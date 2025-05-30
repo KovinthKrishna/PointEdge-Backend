@@ -55,6 +55,10 @@ public class AttendanceService {
         return attendanceRepository.findByDate(date);
     }
 
+    public List<Attendance> findByDateBetween(LocalDate startDate, LocalDate endDate) {
+    return attendanceRepository.findByDateBetween(startDate, endDate);
+}
+
     public List<Attendance> findByEmployeeAndDate(Employee employee, LocalDate date) {
         return attendanceRepository.findByEmployeeAndDate(employee, date);
     }
