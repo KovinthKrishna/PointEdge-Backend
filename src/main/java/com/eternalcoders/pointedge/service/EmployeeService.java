@@ -32,6 +32,19 @@ public class EmployeeService {
 
     public Employee createEmployee(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
+        
+        // Set the ID from DTO - this is the key change
+        if (employeeDTO.getId() != null) {
+            employee.setId(employeeDTO.getId());
+        } else {
+            // If no ID provided, find the max ID and add 1
+            Long maxId = employeeRepository.findAll().stream()
+                .map(Employee::getId)
+                .max(Long::compareTo)
+                .orElse(0L);
+            employee.setId(maxId + 1);
+        }
+        
         employee.setName(employeeDTO.getName());
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
