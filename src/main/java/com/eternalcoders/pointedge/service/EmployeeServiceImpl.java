@@ -2,23 +2,40 @@ package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.EmployeeDTO;
 import com.eternalcoders.pointedge.entity.Employee;
+import com.eternalcoders.pointedge.entity.PasswordResetToken;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.eternalcoders.pointedge.repository.PasswordResetTokenRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
 
-    @Autowired
-    private EmployeeRepository repository;
+    private final EmployeeRepository employeeRepository;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder; // ✅ Inject password encoder
+    public EmployeeServiceImpl(
+            EmployeeRepository employeeRepository,
+            PasswordResetTokenRepository tokenRepository,
+            PasswordEncoder passwordEncoder,
+            EmailService emailService
+    ) {
+        this.employeeRepository = employeeRepository;
+        this.tokenRepository = tokenRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
+    }
 
     @Override
     public void registerEmployee(EmployeeDTO dto) {
-        if (repository.existsByEmail(dto.getEmail())) {
+        if (employeeRepository.existsByEmail(dto.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
@@ -31,10 +48,49 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setLastName(dto.getLastName());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setEmail(dto.getEmail());
+        employee.setRole("USER");
 
-        // ✅ Encode password before saving
         employee.setTempPassword(passwordEncoder.encode(dto.getTempPassword()));
 
-        repository.save(employee);
+        employeeRepository.save(employee);
+    }
+
+    @Override
+    @Transactional
+    public void sendResetPasswordToken(String email) {
+        Employee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Delete existing token (if any) and flush to ensure it's committed before inserting new
+        tokenRepository.deleteByUser(employee);
+        tokenRepository.flush();
+
+        String token = UUID.randomUUID().toString();
+
+        // ✅ FIX: instantiate the token properly
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setUser(employee);
+        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+
+        tokenRepository.save(resetToken);
+
+        emailService.sendPasswordResetEmail(email, token);
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token expired");
+        }
+
+        Employee employee = resetToken.getUser();
+        employee.setTempPassword(passwordEncoder.encode(newPassword));
+        employeeRepository.save(employee);
+
+        tokenRepository.delete(resetToken); // Clean up used token
     }
 }
