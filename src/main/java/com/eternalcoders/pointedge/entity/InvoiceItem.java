@@ -8,21 +8,14 @@ import lombok.Setter;
 @Setter
 @Entity
 public class InvoiceItem {
-    @Setter
-    @Getter
+
     @Id
     @GeneratedValue
     private Long id;
 
-    @Setter
-    @Getter
-    private Long productId;
+    private Long productId; // Still needed for stock updates
     private String productName;
-    @Setter
-    @Getter
     private Integer quantity;
-    @Setter
-    @Getter
     private Double price;
     private boolean returned = false;
 
@@ -30,4 +23,21 @@ public class InvoiceItem {
     @JoinColumn(name = "invoice_number", referencedColumnName = "invoiceNumber")
     private Invoice invoice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id")
+    private OrderItem orderItem;
+
+    // --- New dynamic getters ---
+
+    public String getProductName() {
+        return orderItem != null ? orderItem.getProduct().getName() : productName;
+    }
+
+    public Long getProductId() {
+        return orderItem != null ? orderItem.getProduct().getId() : productId;
+    }
+
+    public Double getPrice() {
+        return orderItem != null ? orderItem.getPricePerUnit() : price;
+    }
 }

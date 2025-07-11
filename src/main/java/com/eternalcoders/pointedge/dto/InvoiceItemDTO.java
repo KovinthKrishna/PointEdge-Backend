@@ -9,5 +9,5 @@ public class InvoiceItemDTO {
     private Long itemId;
     private String productName;
     private Double price;
-    private int quantity;
+    private Integer quantity;
 }

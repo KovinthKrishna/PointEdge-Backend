@@ -10,7 +10,6 @@ import com.eternalcoders.pointedge.entity.RequestReturn;
 @Entity
 public class ReturnItem {
 
-    // Getters and Setters
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,5 +28,7 @@ public class ReturnItem {
     @JoinColumn(name = "request_return_id")
     private RequestReturn requestReturn;
 
+    @Setter
+    private String reason;
 
 }

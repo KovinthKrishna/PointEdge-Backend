@@ -1,4 +1,5 @@
 package com.eternalcoders.pointedge.entity;
+import com.eternalcoders.pointedge.entity.Product;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,5 +30,10 @@ public class ReturnRecord {
     private String refundMethod;
     @Setter
     private LocalDateTime returnedAt;
+
+    @Setter
+    @ManyToOne
+    @JoinColumn(name = "replacement_product_id")
+    private Product replacementProduct;
 
 }
