@@ -1,12 +1,13 @@
 package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.InvoiceDTO;
+import com.eternalcoders.pointedge.dto.InvoiceItemDTO;
 import com.eternalcoders.pointedge.dto.ReturnRequestDTO;
 import com.eternalcoders.pointedge.dto.ReturnedItemDTO;
 import com.eternalcoders.pointedge.entity.*;
 import com.eternalcoders.pointedge.repository.*;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,125 +16,119 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ReturnService {
 
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
     private final ProductRepository productRepository;
-    @Autowired
-    private RequestReturnRepository requestReturnRepository;
+    private final ReturnRecordRepository returnRecordRepository;
+    private final RequestReturnRepository requestReturnRepository;
 
-    @Autowired
-    private ReturnRecordRepository returnRecordRepository;
-
-
-    public ReturnService(InvoiceRepository invoiceRepository,
-                         InvoiceItemRepository invoiceItemRepository,
-                         ProductRepository productRepository,
-                         RequestReturnRepository requestReturnRepository,
-                         ReturnRecordRepository returnRecordRepository) {
-        this.invoiceRepository = invoiceRepository;
-        this.invoiceItemRepository = invoiceItemRepository;
-        this.productRepository = productRepository;
-        this.requestReturnRepository = requestReturnRepository;
-        this.returnRecordRepository = returnRecordRepository;
-    }
-
-    public Invoice validateInvoice(String invoiceNumber) {
-        return invoiceRepository.findById(invoiceNumber)
-                .orElseThrow(() -> new RuntimeException("Invalid Invoice Number"));
-    }
-
-    public InvoiceDTO fetchInvoiceDetails(String invoiceNumber) {
-        Invoice invoice = validateInvoice(invoiceNumber);
-        List<InvoiceItem> items = invoice.getItems();
-
-        InvoiceDTO dto = new InvoiceDTO();
-        dto.setInvoiceNumber(invoice.getInvoiceNumber());
-        dto.setDate(invoice.getDate());
-        dto.setTotalAmount(invoice.getTotalAmount());
-        dto.setLoyaltyPoints(invoice.getLoyaltyPoints());
-
-        dto.setItems(items.stream().map(item -> {
-            ReturnedItemDTO returnedItem = new ReturnedItemDTO();
-            returnedItem.setItemId(item.getId());
-            returnedItem.setQuantity(item.getQuantity());
-            return returnedItem;
-        }).collect(Collectors.toList()));
-
-        return dto;
-    }
-
+    /**
+     * Handles return processing: inventory updates, history logging
+     */
     @Transactional
     public void handleReturn(ReturnRequestDTO returnRequest) {
-        Invoice invoice = validateInvoice(returnRequest.getInvoiceNumber());
+        Invoice invoice = invoiceRepository.findByInvoiceNumber(returnRequest.getInvoiceNumber())
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
 
-        double totalRefundAmount = 0;
-
-        // Create RequestReturn entry
-        RequestReturn requestReturn = new RequestReturn();
-        requestReturn.setInvoiceNumber(returnRequest.getInvoiceNumber());
-        requestReturn.setReturnDate(LocalDateTime.now());
-        requestReturn.setRefundMethod(returnRequest.getRefundMethod());
-        requestReturn.setReason(returnRequest.getReason());
-
+        double totalRefundAmount = 0.0;
         List<ReturnItem> returnItems = new ArrayList<>();
 
-        for (ReturnedItemDTO returnedItemDTO : returnRequest.getItems()) {
-            InvoiceItem invoiceItem = invoiceItemRepository.findById(returnedItemDTO.getItemId())
-                    .orElseThrow(() -> new RuntimeException("Invoice item not found"));
-
-            Product product = productRepository.findById(invoiceItem.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            int returnQty = returnedItemDTO.getQuantity();
-            product.setStockQuantity(product.getStockQuantity() + returnQty);
-            productRepository.save(product);
-
-            double itemRefund = invoiceItem.getPrice() * returnQty;
-            totalRefundAmount += itemRefund;
-
-            // Save individual ReturnRecord for history
-            ReturnRecord record = new ReturnRecord();
-            record.setInvoiceNumber(invoice.getInvoiceNumber());
-            record.setInvoiceItemId(invoiceItem.getId());
-            record.setProductId(invoiceItem.getProductId());
-            record.setQuantityReturned(returnQty);
-            record.setReason(returnedItemDTO.getReason());
-            record.setRefundMethod(returnRequest.getRefundMethod());
-            record.setReturnedAt(LocalDateTime.now());
-            returnRecordRepository.save(record);
-
-            // Add ReturnItem for RequestReturn tracking
-            ReturnItem returnItem = new ReturnItem();
-            returnItem.setProductId(invoiceItem.getProductId());
-            returnItem.setQuantity(returnQty);
-            returnItem.setRequestReturn(requestReturn); // associate with request
-            returnItems.add(returnItem);
+        for (ReturnedItemDTO itemDTO : returnRequest.getItems()) {
+            totalRefundAmount += processReturnItem(itemDTO, invoice, returnRequest, returnItems);
         }
 
-        requestReturn.setRefundAmount(totalRefundAmount);
-        requestReturn.setItems(returnItems); // all linked items
+        RequestReturn requestReturn = new RequestReturn();
+        requestReturn.setInvoice(invoice);
+        requestReturn.setItems(returnItems);
+        requestReturn.setRefundMethod(returnRequest.getRefundMethod());
+        requestReturn.setTotalRefundAmount(totalRefundAmount);
+        requestReturn.setCreatedAt(LocalDateTime.now());
+
+        for (ReturnItem item : returnItems) {
+            item.setRequestReturn(requestReturn);
+        }
+
         requestReturnRepository.save(requestReturn);
-
-        // Adjust loyalty points
-        int pointsToDeduct = (int) (totalRefundAmount / 100);
-        invoice.setLoyaltyPoints(Math.max(0, invoice.getLoyaltyPoints() - pointsToDeduct));
-        invoiceRepository.save(invoice);
-
-        // Refund customer
-        refundCustomer(totalRefundAmount, returnRequest.getRefundMethod());
     }
 
+    /**
+     * Placeholder for refund logic — to integrate with payment gateway
+     */
+    public void handleRefund(ReturnRequestDTO returnRequest) {
+        // TODO: Integrate payment gateway refund logic here
+        // Use returnRequest.getRefundMethod(), total amount, etc.
+        System.out.println("Refund method: " + returnRequest.getRefundMethod());
+        System.out.println("Amount: [will be calculated based on return record]");
+        // Simulate refund response or integrate with real API
+    }
 
+    /**
+     * Process individual returned item
+     */
+    private double processReturnItem(ReturnedItemDTO dto, Invoice invoice, ReturnRequestDTO request,
+                                     List<ReturnItem> returnItems) {
 
-    private void refundCustomer(double amount, String method) {
-        if ("cash".equalsIgnoreCase(method)) {
-            System.out.println("Refunded " + amount + " in cash.");
-        } else if ("card".equalsIgnoreCase(method)) {
-            System.out.println("Refunded " + amount + " to card.");
-        } else {
-            throw new RuntimeException("Unsupported refund method: " + method);
+        Long productId = dto.getItemId();
+        if (productId == null) {
+            throw new IllegalArgumentException("Return item product ID must not be null");
         }
+
+        InvoiceItem invoiceItem = invoiceItemRepository.findById(dto.getItemId())
+                .orElseThrow(() -> new RuntimeException("Invoice item not found"));
+
+        Product product = productRepository.findById(invoiceItem.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        int returnQty = dto.getQuantity();
+        product.setStockQuantity(product.getStockQuantity() + returnQty);
+        productRepository.save(product);
+
+        double itemRefund = invoiceItem.getPrice() * returnQty;
+
+        ReturnRecord record = new ReturnRecord();
+        record.setInvoiceNumber(invoice.getInvoiceNumber());
+        record.setInvoiceItemId(invoiceItem.getId());
+        record.setProductId(invoiceItem.getProductId());
+        record.setQuantityReturned(returnQty);
+        record.setReason(dto.getReason());
+        record.setRefundMethod(request.getRefundMethod());
+        record.setReturnedAt(LocalDateTime.now());
+        returnRecordRepository.save(record);
+
+        ReturnItem returnItem = new ReturnItem();
+        returnItem.setProductId(invoiceItem.getProductId());
+        returnItem.setQuantity(returnQty);
+        returnItems.add(returnItem);
+
+        return itemRefund;
+    }
+
+    /**
+     * Fetch invoice details for return UI
+     */
+    public InvoiceDTO fetchInvoiceDetails(String invoiceNumber) {
+        Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber)
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+
+        InvoiceDTO invoiceDTO = new InvoiceDTO();
+        invoiceDTO.setInvoiceNumber(invoice.getInvoiceNumber());
+        invoiceDTO.setDate(invoice.getDate());
+        invoiceDTO.setTotalAmount(invoice.getTotalAmount());
+        invoiceDTO.setLoyaltyPoints(invoice.getLoyaltyPoints());
+
+        List<InvoiceItemDTO> itemDTOs = invoice.getItems().stream().map(item -> {
+            InvoiceItemDTO dto = new InvoiceItemDTO();
+            dto.setItemId(item.getId());
+            dto.setProductName(item.getProductName());
+            dto.setPrice(item.getPrice());
+            dto.setQuantity(item.getQuantity());
+            return dto;
+        }).collect(Collectors.toList());
+
+        invoiceDTO.setItems(itemDTOs);
+        return invoiceDTO;
     }
 }
