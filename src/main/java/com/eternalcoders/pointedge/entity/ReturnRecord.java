@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Entity
 public class ReturnRecord {
 
-    // Getters and Setters
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
