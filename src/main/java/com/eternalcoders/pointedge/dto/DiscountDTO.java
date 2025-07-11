@@ -20,8 +20,8 @@ public class DiscountDTO {
     
     private DiscountType type;
     
-    private Long itemId;     // Only the ID to avoid heavy object transfer
-    private Long categoryId; // Same here
+    private Long itemId;    
+    private Long categoryId; 
     
     private LoyaltyTier loyaltyType;
     
@@ -33,10 +33,6 @@ public class DiscountDTO {
     private Boolean isActive ;
     
     private String duration;
-
-    // public Object getId() {
-    //     return id;
-    // }
     
     public Object getPercentage() {
         return percentage;
