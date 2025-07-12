@@ -8,6 +8,7 @@ import com.eternalcoders.pointedge.security.JwtUtil;
 import com.eternalcoders.pointedge.service.EmployeeService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -115,6 +116,7 @@ public class EmployeeController {
         dto.setRole(employee.getRole());
         dto.setAvatar(employee.getAvatar());
         dto.setStatus(employee.getStatus());
+        dto.setLocation(employee.getLocation());
         return dto;
     }
 

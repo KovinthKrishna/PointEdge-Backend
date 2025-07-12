@@ -1,6 +1,6 @@
 package com.eternalcoders.pointedge.repository;
 
-import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
+import com.eternalcoders.pointedge.dto.*;
 import com.eternalcoders.pointedge.entity.OrderItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Query("SELECT oi.product.id AS productId, " +
@@ -31,4 +32,44 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             @Param("search") String search,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT new com.eternalcoders.pointedge.dto.TopSellingProductDTO(
+            oi.product.id, oi.product.name, SUM(oi.quantity)
+        )
+        FROM OrderItem oi
+        GROUP BY oi.product.id, oi.product.name
+        ORDER BY SUM(oi.quantity) DESC
+    """)
+    List<TopSellingProductDTO> findTopSellingProducts();
+
+    @Query("""
+        SELECT new com.eternalcoders.pointedge.dto.DailySalesDTO(
+            o.orderDate, SUM(CAST(oi.pricePerUnit * oi.quantity AS double))
+        )
+        FROM OrderItem oi
+        JOIN oi.order o
+        GROUP BY o.orderDate
+        ORDER BY o.orderDate
+    """)
+    List<DailySalesDTO> getDailySales();
+
+    @Query("""
+        SELECT new com.eternalcoders.pointedge.dto.ProductRevenueDTO(
+            oi.product.id, oi.product.name, SUM(CAST(oi.pricePerUnit * oi.quantity AS double))
+        )
+        FROM OrderItem oi
+        GROUP BY oi.product.id, oi.product.name
+        ORDER BY SUM(oi.pricePerUnit * oi.quantity) DESC
+    """)
+    List<ProductRevenueDTO> getRevenueByProduct();
+
+    @Query("""
+        SELECT new com.eternalcoders.pointedge.dto.CategoryDistributionDTO(
+            p.category.name, COUNT(p.id)
+        )
+        FROM Product p
+        GROUP BY p.category.name
+    """)
+    List<CategoryDistributionDTO> getCategoryDistribution();
 }
