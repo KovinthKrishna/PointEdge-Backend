@@ -1,5 +1,6 @@
 package com.eternalcoders.pointedge.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,10 +17,15 @@ public class AttendanceDTO {
     private String role;
     private String clockIn;
     private String clockOut;
+    
+    // Mark these properties as read-only for JSON deserialization
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String totalHours;
+    
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String otHours;
+    
     private String status;
     private String avatar;
     private LocalDate date;
 }
-

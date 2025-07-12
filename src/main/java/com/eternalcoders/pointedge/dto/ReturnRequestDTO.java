@@ -1,18 +1,14 @@
 package com.eternalcoders.pointedge.dto;
 
-
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.List;
 
-@Setter
-@Getter
+@Data
 public class ReturnRequestDTO {
     private String invoiceNumber;
     private List<ReturnedItemDTO> items;
-    private String refundMethod; // "CASH" or "CARD"
-    @Getter
-    private String reason;
-
+    private String refundMethod;
+    private double totalAmount;
+    private Long replacementProductId;
 }

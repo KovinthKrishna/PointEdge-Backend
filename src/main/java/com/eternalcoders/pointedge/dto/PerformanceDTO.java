@@ -10,11 +10,11 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PerformanceDTO {
-    private String id;        // Employee ID
-    private String name;      // Employee name
-    private String avatar;    // Employee avatar URL
-    private String role;      // Employee role
-    private Integer orders;   // Number of orders
-    private BigDecimal sales; // Total sales amount
-    private String workingHours; // Total working hours
+    private String id;       
+    private String name;      
+    private String avatar;    
+    private String role;      
+    private Integer orders;  
+    private BigDecimal sales; 
+    private String workingHours; 
 }

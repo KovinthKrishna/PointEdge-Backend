@@ -1,8 +1,13 @@
 package com.eternalcoders.pointedge.entity;
+import com.eternalcoders.pointedge.entity.Product;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Getter
 @Entity
 public class ReturnRecord {
 
@@ -10,72 +15,24 @@ public class ReturnRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     private String invoiceNumber;
+    @Setter
     private Long invoiceItemId;
+    @Setter
     private Long productId;
+    @Setter
     private int quantityReturned;
+    @Setter
     private String reason;
+    @Setter
     private String refundMethod;
+    @Setter
     private LocalDateTime returnedAt;
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
+    @Setter
+    @ManyToOne
+    @JoinColumn(name = "replacement_product_id")
+    private Product replacementProduct;
 
-    public String getInvoiceNumber() {
-        return invoiceNumber;
-    }
-
-    public void setInvoiceNumber(String invoiceNumber) {
-        this.invoiceNumber = invoiceNumber;
-    }
-
-    public Long getInvoiceItemId() {
-        return invoiceItemId;
-    }
-
-    public void setInvoiceItemId(Long invoiceItemId) {
-        this.invoiceItemId = invoiceItemId;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public void setProductId(Long productId) {
-        this.productId = productId;
-    }
-
-    public int getQuantityReturned() {
-        return quantityReturned;
-    }
-
-    public void setQuantityReturned(int quantityReturned) {
-        this.quantityReturned = quantityReturned;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public String getRefundMethod() {
-        return refundMethod;
-    }
-
-    public void setRefundMethod(String refundMethod) {
-        this.refundMethod = refundMethod;
-    }
-
-    public LocalDateTime getReturnedAt() {
-        return returnedAt;
-    }
-
-    public void setReturnedAt(LocalDateTime returnedAt) {
-        this.returnedAt = returnedAt;
-    }
 }
