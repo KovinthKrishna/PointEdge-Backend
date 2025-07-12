@@ -17,7 +17,7 @@ public class EmailService {
         String body = "Hi,\n\nClick the link below to reset your password:\n" + resetUrl + "\n\nIf you didn't request this, you can ignore this email.\n\nThanks,\nPointEdge Team";
 
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom("kenukaruna08@gmail.com"); // match with application.properties
+        message.setFrom("pointedgeforyou@gmail.com"); // match with application.properties
         message.setTo(toEmail);
         message.setSubject(subject);
         message.setText(body);
