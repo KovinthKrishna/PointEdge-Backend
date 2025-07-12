@@ -3,13 +3,17 @@ package com.eternalcoders.pointedge.controller;
 import com.eternalcoders.pointedge.dto.EmployeeDTO;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.exception.ResourceNotFoundException;
+import com.eternalcoders.pointedge.repository.EmployeeRepository;
+import com.eternalcoders.pointedge.security.JwtUtil;
 import com.eternalcoders.pointedge.service.EmployeeService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -17,13 +21,37 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:3000")
 public class EmployeeController {
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
     private final EmployeeService employeeService;
 
     @Autowired
     public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
-    
+
+    @PostMapping("/register")
+    public ResponseEntity<String> registerEmployee(@RequestBody EmployeeDTO dto) {
+        employeeService.registerEmployee(dto);
+        return ResponseEntity.ok("Registered Successfully");
+    }
+
+    @GetMapping("/register/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            String email = jwtUtil.extractUsername(token);
+            Optional<Employee> employee = employeeRepository.findByEmail(email);
+            return employee.map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        }
+        return ResponseEntity.status(401).body("Unauthorized");
+    }
 
     @GetMapping
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees() {
@@ -44,30 +72,9 @@ public class EmployeeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createEmployee(@RequestBody EmployeeDTO employeeDTO) {
-        try {
-            // Check if an ID is provided in the request
-            if (employeeDTO.getId() != null) {
-                try {
-                    // Check if an employee with that ID already exists
-                    Employee existingEmployee = employeeService.getEmployeeById(employeeDTO.getId());
-                    // If we get here, it means the ID already exists
-                    return ResponseEntity
-                        .status(HttpStatus.CONFLICT)
-                        .body("Employee with ID " + employeeDTO.getId() + " already exists");
-                } catch (ResourceNotFoundException e) {
-                    // ID doesn't exist, so it's safe to continue
-                }
-            }
-            
-            // At this point either no ID was provided, or the ID is unique
-            Employee savedEmployee = employeeService.createEmployee(employeeDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(savedEmployee));
-        } catch (Exception e) {
-            return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body("Error creating employee: " + e.getMessage());
-        }
+    public ResponseEntity<EmployeeDTO> createEmployee(@RequestBody EmployeeDTO employeeDTO) {
+        Employee savedEmployee = employeeService.createEmployee(employeeDTO);
+        return ResponseEntity.ok(convertToDTO(savedEmployee));
     }
 
     @PutMapping("/{id}")
@@ -80,12 +87,12 @@ public class EmployeeController {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
         try {
             employeeService.deleteEmployee(id);
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.ok().build();
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -102,11 +109,27 @@ public class EmployeeController {
     private EmployeeDTO convertToDTO(Employee employee) {
         EmployeeDTO dto = new EmployeeDTO();
         dto.setId(employee.getId());
-        dto.setName(employee.getName());
+        dto.setFirstName(employee.getFirstName());
+        dto.setLastName(employee.getLastName());
+        dto.setEmail(employee.getEmail());
+        dto.setPhoneNumber(employee.getPhoneNumber());
         dto.setRole(employee.getRole());
         dto.setAvatar(employee.getAvatar());
         dto.setStatus(employee.getStatus());
         dto.setLocation(employee.getLocation());
         return dto;
+    }
+
+    private Employee convertToEntity(EmployeeDTO dto) {
+        Employee employee = new Employee();
+        employee.setId(dto.getId());
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
+        employee.setEmail(dto.getEmail());
+        employee.setPhoneNumber(dto.getPhoneNumber());
+        employee.setRole(dto.getRole());
+        employee.setAvatar(dto.getAvatar());
+        employee.setStatus(dto.getStatus());
+        return employee;
     }
 }

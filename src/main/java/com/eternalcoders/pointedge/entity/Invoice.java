@@ -1,9 +1,6 @@
 package com.eternalcoders.pointedge.entity;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,19 +16,21 @@ public class Invoice {
 
     private LocalDateTime date;
     private Double totalAmount;
+    @Setter
+    @Getter
     private Integer loyaltyPoints;
+
+    @ManyToOne
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
+    public Long getCustomerId() {
+        return customer != null ? customer.getId() : null;
+    }
 
     // OneToMany: Invoice has many InvoiceItems
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL)
     private List<InvoiceItem> items;
-
-    public Integer getLoyaltyPoints() {
-        return loyaltyPoints;
-    }
-
-    public void setLoyaltyPoints(Integer loyaltyPoints) {
-        this.loyaltyPoints = loyaltyPoints;
-    }
 
 }
 

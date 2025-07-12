@@ -6,6 +6,7 @@ import com.eternalcoders.pointedge.exception.ResourceNotFoundException;
 import com.eternalcoders.pointedge.repository.AttendanceRepository;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,36 @@ public class EmployeeService {
     @Autowired
     private AttendanceRepository attendanceRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    public void registerEmployee(EmployeeDTO dto) {
+        if (employeeRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Email is already in use.");
+        }
+
+        Employee employee = new Employee();
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
+        employee.setEmail(dto.getEmail());
+        employee.setPhoneNumber(dto.getPhoneNumber());
+        employee.setTempPassword(passwordEncoder.encode(dto.getTempPassword()));
+        employee.setRole(dto.getRole());
+        employee.setAvatar(dto.getAvatar());
+        employee.setStatus(dto.getStatus());
+        employee.setName(dto.getFirstName() + " " + dto.getLastName());
+
+        employeeRepository.save(employee);
+    }
+
+    public void sendResetPasswordToken(String email) {
+        // Logic for generating and sending password reset token
+    }
+
+    public void resetPassword(String token, String newPassword) {
+        // Logic for resetting the password using token
+    }
+
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll();
     }
@@ -32,34 +63,27 @@ public class EmployeeService {
 
     public Employee createEmployee(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
-        
-        // Set the ID from DTO - this is the key change
-        if (employeeDTO.getId() != null) {
-            employee.setId(employeeDTO.getId());
-        } else {
-            // If no ID provided, find the max ID and add 1
-            Long maxId = employeeRepository.findAll().stream()
-                .map(Employee::getId)
-                .max(Long::compareTo)
-                .orElse(0L);
-            employee.setId(maxId + 1);
-        }
-        
-        employee.setName(employeeDTO.getName());
+        employee.setFirstName(employeeDTO.getFirstName());
+        employee.setLastName(employeeDTO.getLastName());
+        employee.setPhoneNumber(employeeDTO.getPhoneNumber());
+        employee.setEmail(employeeDTO.getEmail());
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
-        employee.setLocation(employeeDTO.getLocation());
+        employee.setName(employeeDTO.getFirstName() + " " + employeeDTO.getLastName());
         return employeeRepository.save(employee);
     }
 
     public Employee updateEmployee(Long id, EmployeeDTO employeeDTO) {
         Employee employee = getEmployeeById(id);
-        employee.setName(employeeDTO.getName());
+        employee.setFirstName(employeeDTO.getFirstName());
+        employee.setLastName(employeeDTO.getLastName());
+        employee.setPhoneNumber(employeeDTO.getPhoneNumber());
+        employee.setEmail(employeeDTO.getEmail());
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
-        employee.setLocation(employeeDTO.getLocation());
+        employee.setName(employeeDTO.getFirstName() + " " + employeeDTO.getLastName());
         return employeeRepository.save(employee);
     }
 

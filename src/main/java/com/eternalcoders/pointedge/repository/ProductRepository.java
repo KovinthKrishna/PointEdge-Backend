@@ -1,5 +1,6 @@
 package com.eternalcoders.pointedge.repository;
 
+import com.eternalcoders.pointedge.dto.CategoryDistributionDTO;
 import com.eternalcoders.pointedge.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -29,4 +31,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     );
 
     Optional<Product> findByBarcode(String barcode);
+
+    @Query("""
+    SELECT new com.eternalcoders.pointedge.dto.CategoryDistributionDTO(
+        p.category.name, COUNT(p.id)
+    )
+    FROM Product p
+    WHERE p.hidden = false
+    GROUP BY p.category.name
+""")
+    List<CategoryDistributionDTO> getProductCategoryDistribution();
 }
