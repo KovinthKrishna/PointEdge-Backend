@@ -16,24 +16,16 @@ import java.util.List;
 public class Employee {
 
     @Id
-    
     private Long id;
 
     // Personal Info
     @Column(nullable = false)
-    private String firstName;
-
-    @Column(nullable = false)
-    private String lastName;
+    private String name; // full name
 
     @Column(nullable = false, unique = true)
     private String email;
 
     private String phoneNumber;
-
-    // For display purposes
-    @Column(nullable = false)
-    private String name; // full name = first + last
 
     // Auth Info
     @Setter

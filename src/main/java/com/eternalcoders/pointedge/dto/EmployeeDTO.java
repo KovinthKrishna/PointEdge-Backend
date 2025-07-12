@@ -10,8 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EmployeeDTO {
     private Long id;
-    private String firstName;
-    private String lastName;
+    private String name; // <-- Use a single name field
     private String phoneNumber;
     private String email;
     private String tempPassword;
