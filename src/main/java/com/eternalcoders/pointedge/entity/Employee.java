@@ -45,8 +45,10 @@ public class Employee {
 
     @Column(name = "avatar_url")
     private String avatar;
-
-    // Employment status
+    
+    @Column(name = "location")
+    private String location;
+    
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
