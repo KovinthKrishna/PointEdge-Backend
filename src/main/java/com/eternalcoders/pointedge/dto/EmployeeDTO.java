@@ -18,5 +18,6 @@ public class EmployeeDTO {
     private String confirmPassword;
     private String role;
     private String avatar;
+    private String location;
     private EmployeeStatus status;
 }
