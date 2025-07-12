@@ -12,4 +12,5 @@ public class ReturnedItemDTO {
     private int quantity;
 
     private String reason;
+
 }

@@ -10,5 +10,5 @@ public class ReturnRequestDTO {
     private List<ReturnedItemDTO> items;
     private String refundMethod;
     private double totalAmount;
-    private String reason;
+    private Long replacementProductId;
 }

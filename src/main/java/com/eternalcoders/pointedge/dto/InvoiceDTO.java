@@ -13,5 +13,5 @@ public class InvoiceDTO {
     private List<InvoiceItemDTO> items;
     private LocalDateTime date;
     private Double totalAmount;
-    private Integer loyaltyPoints;
+    private double loyaltyPoints;
 }
