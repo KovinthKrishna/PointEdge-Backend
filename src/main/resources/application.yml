@@ -6,5 +6,17 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-  profiles:
-    active: dev
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: pointedgeforyou@gmail.com
+    password: eaih glmg elgc vkrr
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000

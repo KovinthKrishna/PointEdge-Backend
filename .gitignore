@@ -4,6 +4,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 uploads/
+.DS_Store
+src/main/resources/application.properties
 
 ### STS ###
 .apt_generated
@@ -32,4 +34,3 @@ build/
 
 ### VS Code ###
 .vscode/
-.DS_Store
