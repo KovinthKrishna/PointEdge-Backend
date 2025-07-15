@@ -14,6 +14,7 @@ public class LoyaltyThresholdsDTO {
     public double silver;
     public double bronze;
     public double points;
+    public String adminPassword;
 
 
     // Getter for gold
@@ -44,6 +45,26 @@ public class LoyaltyThresholdsDTO {
     // Setter for bronze
     public void setBronze(Double bronze) {
         this.bronze = bronze;
+    }
+
+    // getter for adminPassword
+    public String getAdminPassword() {
+        return adminPassword;
+    }
+
+    // setter for adminPassword
+    public void setAdminPassword(String adminPassword) {
+        this.adminPassword = adminPassword;
+    }
+
+    // Getter for points
+    public Double getPoints() {
+        return points;
+    }
+
+    // Setter for points
+    public void setPoints(Double points) {
+        this.points = points;
     }
 
 }

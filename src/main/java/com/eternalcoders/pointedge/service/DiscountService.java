@@ -162,17 +162,38 @@ public class DiscountService {
         return modelMapper.map(thresholds, LoyaltyThresholdsDTO.class);
     }
     
-    //update loyalty thresholds
-    public LoyaltyThresholdsDTO updateLoyaltyThresholds(LoyaltyThresholdsDTO thresholdsDTO) {
-        discountRepository.updateLoyaltyThresholds(
-            thresholdsDTO.gold,
-            thresholdsDTO.silver,
-            thresholdsDTO.bronze,
-            thresholdsDTO.points
-        );
-        customerService.updateAllCustomerTiers();
-        return thresholdsDTO;
+    // Update loyalty thresholds with admin password validation
+public LoyaltyThresholdsDTO updateLoyaltyThresholds(LoyaltyThresholdsDTO thresholdsDTO) {
+    if (thresholdsDTO.getAdminPassword() == null || thresholdsDTO.getAdminPassword().trim().isEmpty()) {
+        throw new IllegalArgumentException("Admin password is required");
     }
+
+    // Validate admin password
+    boolean isValid = discountRepository.existsByAdminPassword(thresholdsDTO.getAdminPassword());
+    if (!isValid) {
+        throw new SecurityException("Invalid admin credentials");
+    }
+
+    // Update thresholds if password is valid
+    discountRepository.updateLoyaltyThresholds(
+        thresholdsDTO.getGold(),
+        thresholdsDTO.getSilver(),
+        thresholdsDTO.getBronze(),
+        thresholdsDTO.getPoints()
+    );
+    
+    // Update all customer tiers based on new thresholds
+    customerService.updateAllCustomerTiers();
+    
+    // Return the updated thresholds (without the password)
+    LoyaltyThresholdsDTO resultDTO = new LoyaltyThresholdsDTO();
+    resultDTO.setGold(thresholdsDTO.getGold());
+    resultDTO.setSilver(thresholdsDTO.getSilver());
+    resultDTO.setBronze(thresholdsDTO.getBronze());
+    resultDTO.setPoints(thresholdsDTO.getPoints());
+    // Admin password is intentionally not set in the response
+    return resultDTO;
+}
     
     //get active item discounts
     public List<DiscountDTO> getActiveItemDiscounts(Long itemId, Discount.LoyaltyTier loyaltyTier) {
