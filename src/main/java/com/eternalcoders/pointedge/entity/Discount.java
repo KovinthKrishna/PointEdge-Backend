@@ -79,11 +79,11 @@ public class Discount {
     @Column(name = "duration", nullable = false)
     private String duration;
     
-    @AssertTrue(message = "Only one of item, category, or loyaltyType must be set based on type")
+    @AssertTrue(message = "Invalid target combination")
     private boolean isValidTarget() {
         return switch (type) {
-            case ITEM -> item != null && category == null && loyaltyType == null;
-            case CATEGORY -> category != null && item == null && loyaltyType == null;
+            case ITEM -> item != null && category == null;
+            case CATEGORY -> category != null && item == null;
             case LOYALTY -> loyaltyType != null && item == null && category == null;
         };
     }
