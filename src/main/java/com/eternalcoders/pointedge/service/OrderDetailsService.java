@@ -414,4 +414,154 @@ public class OrderDetailsService {
         return result;
     }
 
+    // Add these methods to OrderDetailsService.java
+
+public Map<String, Long> getOrderCountsByCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Long> result = new HashMap<>();
+    result.put("totalOrders", orderDetailsRepository.countOrdersByDateRange(startDate, endDate));
+    return result;
+}
+
+public Map<String, Map<String, Long>> getDiscountCountsByTypeForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Map<String, Long>> result = new HashMap<>();
+    
+    Map<String, Long> discountCounts = new HashMap<>();
+    discountCounts.put("ITEM", orderDetailsRepository.countItemDiscountsByDateRange(startDate, endDate));
+    discountCounts.put("CATEGORY", orderDetailsRepository.countCategoryDiscountsByDateRange(startDate, endDate));
+    discountCounts.put("LOYALTY", orderDetailsRepository.countLoyaltyDiscountsByDateRange(startDate, endDate));
+    
+    result.put("discountCounts", discountCounts);
+    return result;
+}
+
+public Map<String, Object> getCustomerCountsByTierForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    List<Object[]> counts = orderDetailsRepository.countCustomersByTierInDateRange(startDate, endDate);
+    for (Object[] count : counts) {
+        String tier = count[0] != null ? count[0].toString() : "NOTLOYALTY";
+        result.put(tier.toLowerCase(), ((Number) count[1]).longValue());
+    }
+    
+    return result;
+}
+
+public Map<String, Object> getLoyaltyDiscountDataByTierForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    List<Object[]> counts = orderDetailsRepository.countLoyaltyDiscountsByTierAndDateRange(startDate, endDate);
+    for (Object[] count : counts) {
+        String tier = count[0] != null ? count[0].toString() : "NOTLOYALTY";
+        result.put(tier.toLowerCase() + "Count", ((Number) count[1]).longValue());
+    }
+    
+    List<Object[]> discounts = orderDetailsRepository.sumLoyaltyDiscountByTierInDateRange(startDate, endDate);
+    for (Object[] discount : discounts) {
+        String tier = discount[0] != null ? discount[0].toString() : "NOTLOYALTY";
+        result.put(tier.toLowerCase() + "Discount", ((Number) discount[1]).doubleValue());
+    }
+    
+    return result;
+}
+
+public Map<String, Object> getItemDiscountAnalyticsForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    List<Object[]> itemAnalytics = orderDetailsRepository.findTopItemDiscountsByDateRange(startDate, endDate);
+    List<Map<String, Object>> topItems = new ArrayList<>();
+    
+    double totalAmount = 0.0;
+    double totalDiscount = 0.0;
+    
+    for (Object[] item : itemAnalytics) {
+        Map<String, Object> itemMap = new HashMap<>();
+        itemMap.put("itemId", item[0]);
+        itemMap.put("itemName", item[1]);
+        itemMap.put("amount", ((Number) item[2]).doubleValue());
+        itemMap.put("discount", ((Number) item[3]).doubleValue());
+        itemMap.put("count", ((Number) item[4]).longValue());
+        
+        totalAmount += ((Number) item[2]).doubleValue();
+        totalDiscount += ((Number) item[3]).doubleValue();
+        
+        topItems.add(itemMap);
+    }
+    
+    result.put("totalAmount", totalAmount);
+    result.put("totalDiscount", totalDiscount);
+    result.put("topItems", topItems);
+    
+    return result;
+}
+
+public Map<String, Object> getCategoryDiscountAnalyticsForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    List<Object[]> categoryAnalytics = orderDetailsRepository.findTopCategoryDiscountsByDateRange(startDate, endDate);
+    List<Map<String, Object>> topCategories = new ArrayList<>();
+    
+    double totalAmount = 0.0;
+    double totalDiscount = 0.0;
+    
+    for (Object[] category : categoryAnalytics) {
+        Map<String, Object> categoryMap = new HashMap<>();
+        categoryMap.put("categoryId", category[0]);
+        categoryMap.put("categoryName", category[1]);
+        categoryMap.put("amount", ((Number) category[2]).doubleValue());
+        categoryMap.put("discount", ((Number) category[3]).doubleValue());
+        categoryMap.put("count", ((Number) category[4]).longValue());
+        
+        totalAmount += ((Number) category[2]).doubleValue();
+        totalDiscount += ((Number) category[3]).doubleValue();
+        
+        topCategories.add(categoryMap);
+    }
+    
+    result.put("totalAmount", totalAmount);
+    result.put("totalDiscount", totalDiscount);
+    result.put("topCategories", topCategories);
+    
+    return result;
+}
+
+public Map<String, Object> getAllDiscountTotalsForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    Double totalDiscount = orderDetailsRepository.sumTotalDiscountByDateRange(startDate, endDate);
+    Double itemDiscount = orderDetailsRepository.sumItemDiscountByDateRange(startDate, endDate);
+    Double categoryDiscount = orderDetailsRepository.sumCategoryDiscountByDateRange(startDate, endDate);
+    Double loyaltyDiscount = orderDetailsRepository.sumLoyaltyDiscountByDateRange(startDate, endDate);
+    
+    result.put("totalDiscount", totalDiscount != null ? totalDiscount : 0.0);
+    result.put("itemDiscount", itemDiscount != null ? itemDiscount : 0.0);
+    result.put("categoryDiscount", categoryDiscount != null ? categoryDiscount : 0.0);
+    result.put("loyaltyDiscount", loyaltyDiscount != null ? loyaltyDiscount : 0.0);
+    
+    return result;
+}
+
+public Map<String, Object> getOrderSummaryMetricsForCustomRange(LocalDateTime startDate, LocalDateTime endDate) {
+    Map<String, Object> result = new HashMap<>();
+    
+    List<Object[]> amountAndPoints = orderDetailsRepository.sumAmountAndPointsByDateRange(startDate, endDate);
+    if (!amountAndPoints.isEmpty()) {
+        Object[] data = amountAndPoints.get(0);
+        result.put("totalAmount", ((Number) data[0]).doubleValue());
+        result.put("totalPointsEarned", ((Number) data[1]).doubleValue());
+    } else {
+        result.put("totalAmount", 0.0);
+        result.put("totalPointsEarned", 0.0);
+    }
+    
+    Double totalLoyaltyAmount = orderDetailsRepository.sumAmountWithLoyaltyDiscountInDateRange(startDate, endDate);
+    Double totalItemAmount = orderDetailsRepository.sumAmountWithItemDiscountInDateRange(startDate, endDate);
+    Double totalCategoryAmount = orderDetailsRepository.sumAmountWithCategoryDiscountInDateRange(startDate, endDate);
+    
+    result.put("totalLoyaltyAmount", totalLoyaltyAmount != null ? totalLoyaltyAmount : 0.0);
+    result.put("totalItemAmount", totalItemAmount != null ? totalItemAmount : 0.0);
+    result.put("totalCategoryAmount", totalCategoryAmount != null ? totalCategoryAmount : 0.0);
+    
+    return result;
+}
+
 }
