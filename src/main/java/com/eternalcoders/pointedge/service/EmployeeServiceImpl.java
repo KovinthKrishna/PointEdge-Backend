@@ -44,12 +44,10 @@ public class EmployeeServiceImpl extends EmployeeService {
         }
 
         Employee employee = new Employee();
-        employee.setFirstName(dto.getFirstName());
-        employee.setLastName(dto.getLastName());
+        employee.setName(dto.getName());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setEmail(dto.getEmail());
         employee.setRole("USER");
-
         employee.setTempPassword(passwordEncoder.encode(dto.getTempPassword()));
 
         employeeRepository.save(employee);
@@ -67,7 +65,6 @@ public class EmployeeServiceImpl extends EmployeeService {
 
         String token = UUID.randomUUID().toString();
 
-        // ✅ FIX: instantiate the token properly
         PasswordResetToken resetToken = new PasswordResetToken();
         resetToken.setToken(token);
         resetToken.setUser(employee);

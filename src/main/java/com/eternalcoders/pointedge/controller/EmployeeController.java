@@ -8,7 +8,6 @@ import com.eternalcoders.pointedge.security.JwtUtil;
 import com.eternalcoders.pointedge.service.EmployeeService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -106,11 +105,11 @@ public class EmployeeController {
         return ResponseEntity.ok(employees);
     }
 
+    // Updated conversion methods for single 'name' field
     private EmployeeDTO convertToDTO(Employee employee) {
         EmployeeDTO dto = new EmployeeDTO();
         dto.setId(employee.getId());
-        dto.setFirstName(employee.getFirstName());
-        dto.setLastName(employee.getLastName());
+        dto.setName(employee.getName());
         dto.setEmail(employee.getEmail());
         dto.setPhoneNumber(employee.getPhoneNumber());
         dto.setRole(employee.getRole());
@@ -123,13 +122,13 @@ public class EmployeeController {
     private Employee convertToEntity(EmployeeDTO dto) {
         Employee employee = new Employee();
         employee.setId(dto.getId());
-        employee.setFirstName(dto.getFirstName());
-        employee.setLastName(dto.getLastName());
+        employee.setName(dto.getName());
         employee.setEmail(dto.getEmail());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setRole(dto.getRole());
         employee.setAvatar(dto.getAvatar());
         employee.setStatus(dto.getStatus());
+        employee.setLocation(dto.getLocation());
         return employee;
     }
 }

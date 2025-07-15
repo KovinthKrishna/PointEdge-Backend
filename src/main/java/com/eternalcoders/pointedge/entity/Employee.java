@@ -19,21 +19,20 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Personal Info
-    @Column(nullable = false)
+    @Column(name = "first_name")
     private String firstName;
 
-    @Column(nullable = false)
+    @Column(name = "last_name")
     private String lastName;
+
+    // Personal Info
+    @Column(nullable = false)
+    private String name; // full name
 
     @Column(nullable = false, unique = true)
     private String email;
 
     private String phoneNumber;
-
-    // For display purposes
-    @Column(nullable = false)
-    private String name; // full name = first + last
 
     // Auth Info
     @Setter
