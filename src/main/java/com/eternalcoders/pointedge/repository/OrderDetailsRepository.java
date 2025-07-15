@@ -164,6 +164,84 @@ public interface OrderDetailsRepository extends JpaRepository<OrderDetails, Long
 
        @Query("SELECT SUM(o.amount) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND o.datetime BETWEEN :startDate AND :endDate")
        Double sumAmountWithCategoryDiscountInDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+       @Query("SELECT COUNT(DISTINCT o.orderId) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Long countOrdersByDateRange(@Param("startDate") LocalDateTime startDate, 
+                              @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.itemDiscount > 0 AND " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Long countItemDiscountsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                     @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.categoryDiscount > 0 AND " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Long countCategoryDiscountsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                         @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(o) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Long countLoyaltyDiscountsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                        @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.totalDiscount) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Double sumTotalDiscountByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                     @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.itemDiscount) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Double sumItemDiscountByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                    @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.categoryDiscount) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Double sumCategoryDiscountByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                        @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.loyaltyDiscount) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    Double sumLoyaltyDiscountByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                       @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT o.loyaltyTier, COUNT(o) FROM OrderDetails o WHERE o.loyaltyDiscount > 0 AND " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate) " +
+           "GROUP BY o.loyaltyTier")
+    List<Object[]> countLoyaltyDiscountsByTierAndDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                         @Param("endDate") LocalDateTime endDate);
+
+                                                         @Query("SELECT o.itemId, SUM(o.amount), SUM(o.itemDiscount), COUNT(o) " +
+                                                         "FROM OrderDetails o WHERE o.itemDiscount > 0 AND " +
+                                                         "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+                                                         "(:endDate IS NULL OR o.datetime <= :endDate) " +
+                                                         "GROUP BY o.itemId ORDER BY COUNT(o) DESC")
+                                                  List<Object[]> findTopItemDiscountsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                                                               @Param("endDate") LocalDateTime endDate);
+
+                                                                                               @Query("SELECT o.itemId, SUM(o.amount), SUM(o.categoryDiscount), COUNT(o) " +
+                                                                                               "FROM OrderDetails o WHERE o.categoryDiscount > 0 AND " +
+                                                                                               "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+                                                                                               "(:endDate IS NULL OR o.datetime <= :endDate) " +
+                                                                                               "GROUP BY o.itemId ORDER BY COUNT(o) DESC")
+                                                                                        List<Object[]> findTopCategoryDiscountsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                                                                                                                         @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.amount), SUM(o.pointsEarned) FROM OrderDetails o WHERE " +
+           "(:startDate IS NULL OR o.datetime >= :startDate) AND " +
+           "(:endDate IS NULL OR o.datetime <= :endDate)")
+    List<Object[]> sumAmountAndPointsByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                               @Param("endDate") LocalDateTime endDate);
+
        
 }
 

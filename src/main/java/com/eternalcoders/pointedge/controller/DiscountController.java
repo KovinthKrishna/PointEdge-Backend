@@ -180,13 +180,34 @@ public class DiscountController {
         return ResponseEntity.ok(discountService.getLoyaltyThresholds());
     }
     
-    // update loyalty thresholds
-    @PutMapping("/loyalty-thresholds")
-    public ResponseEntity<LoyaltyThresholdsDTO> updateLoyaltyThresholds(
-        @RequestBody LoyaltyThresholdsDTO thresholdsDTO
-    ) {
-        return ResponseEntity.ok(discountService.updateLoyaltyThresholds(thresholdsDTO));
+    // Update loyalty thresholds with password validation
+@PutMapping("/loyalty-thresholds")
+public ResponseEntity<?> updateLoyaltyThresholds(
+    @RequestBody LoyaltyThresholdsDTO thresholdsDTO
+) {
+    try {
+        LoyaltyThresholdsDTO updatedThresholds = discountService.updateLoyaltyThresholds(thresholdsDTO);
+        return ResponseEntity.ok(updatedThresholds);
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+            .body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+    } catch (SecurityException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError()
+            .body(Map.of(
+                "success", false,
+                "message", "Error updating loyalty thresholds: " + e.getMessage()
+            ));
     }
+}
 
     // get all active discounts
     @GetMapping("/active/item/{itemId}")
