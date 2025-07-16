@@ -8,6 +8,7 @@ import com.eternalcoders.pointedge.security.JwtUtil;
 import com.eternalcoders.pointedge.service.EmployeeService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -109,20 +110,23 @@ public class EmployeeController {
     private EmployeeDTO convertToDTO(Employee employee) {
         EmployeeDTO dto = new EmployeeDTO();
         dto.setId(employee.getId());
-        dto.setName(employee.getName());
+        dto.setFirstName(employee.getFirstName());
+        dto.setLastName(employee.getLastName());
         dto.setEmail(employee.getEmail());
         dto.setPhoneNumber(employee.getPhoneNumber());
         dto.setRole(employee.getRole());
         dto.setAvatar(employee.getAvatar());
         dto.setStatus(employee.getStatus());
         dto.setLocation(employee.getLocation());
+        dto.setName(employee.getName());
         return dto;
     }
 
     private Employee convertToEntity(EmployeeDTO dto) {
         Employee employee = new Employee();
         employee.setId(dto.getId());
-        employee.setName(dto.getName());
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
         employee.setEmail(dto.getEmail());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setRole(dto.getRole());

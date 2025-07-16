@@ -31,13 +31,15 @@ public class EmployeeService {
         }
 
         Employee employee = new Employee();
-        employee.setName(dto.getName());
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
         employee.setEmail(dto.getEmail());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setTempPassword(passwordEncoder.encode(dto.getTempPassword()));
         employee.setRole(dto.getRole());
         employee.setAvatar(dto.getAvatar());
         employee.setStatus(dto.getStatus());
+        employee.setName(dto.getFirstName() + " " + dto.getLastName());
 
         employeeRepository.save(employee);
     }
@@ -61,23 +63,27 @@ public class EmployeeService {
 
     public Employee createEmployee(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
-        employee.setName(employeeDTO.getName());
+        employee.setFirstName(employeeDTO.getFirstName());
+        employee.setLastName(employeeDTO.getLastName());
         employee.setPhoneNumber(employeeDTO.getPhoneNumber());
         employee.setEmail(employeeDTO.getEmail());
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
+        employee.setName(employeeDTO.getFirstName() + " " + employeeDTO.getLastName());
         return employeeRepository.save(employee);
     }
 
     public Employee updateEmployee(Long id, EmployeeDTO employeeDTO) {
         Employee employee = getEmployeeById(id);
-        employee.setName(employeeDTO.getName());
+        employee.setFirstName(employeeDTO.getFirstName());
+        employee.setLastName(employeeDTO.getLastName());
         employee.setPhoneNumber(employeeDTO.getPhoneNumber());
         employee.setEmail(employeeDTO.getEmail());
         employee.setRole(employeeDTO.getRole());
         employee.setStatus(employeeDTO.getStatus());
         employee.setAvatar(employeeDTO.getAvatar());
+        employee.setName(employeeDTO.getFirstName() + " " + employeeDTO.getLastName());
         return employeeRepository.save(employee);
     }
 

@@ -44,7 +44,8 @@ public class EmployeeServiceImpl extends EmployeeService {
         }
 
         Employee employee = new Employee();
-        employee.setName(dto.getName());
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
         employee.setPhoneNumber(dto.getPhoneNumber());
         employee.setEmail(dto.getEmail());
         employee.setRole("USER");
