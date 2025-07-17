@@ -5,8 +5,12 @@ import com.eternalcoders.pointedge.dto.AttendanceSearchDTO;
 import com.eternalcoders.pointedge.entity.Attendance;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.exception.ResourceNotFoundException;
+import com.eternalcoders.pointedge.security.JwtUtil;
 import com.eternalcoders.pointedge.service.AttendanceService;
 import com.eternalcoders.pointedge.service.EmployeeService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Collections;
@@ -26,11 +31,13 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final EmployeeService employeeService;
+    private final JwtUtil jwtUtil;
 
     @Autowired
-    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService) {
+    public AttendanceController(AttendanceService attendanceService, EmployeeService employeeService, JwtUtil jwtUtil) {
         this.attendanceService = attendanceService;
         this.employeeService = employeeService;
+        this.jwtUtil = jwtUtil;
     }
 
     @GetMapping
@@ -67,34 +74,87 @@ public class AttendanceController {
     public ResponseEntity<?> searchAttendances(@RequestBody AttendanceSearchDTO searchDTO) {
         try {
             List<Attendance> attendances = attendanceService.getAllAttendances();
-            
-            // Apply employee ID filter if provided
+
             if (searchDTO.getEmployeeId() != null) {
-                System.out.println("Filtering by employee ID: " + searchDTO.getEmployeeId());
                 attendances = attendances.stream()
                     .filter(a -> a.getEmployee().getId().equals(searchDTO.getEmployeeId()))
                     .collect(Collectors.toList());
             }
-    
-            // Apply search filter on employee name and role
-            String searchQuery = searchDTO.getSearchQuery() != null ? 
+
+            String searchQuery = searchDTO.getSearchQuery() != null ?
                     searchDTO.getSearchQuery().toLowerCase() : "";
-    
+
             List<AttendanceDTO> result = attendances.stream()
-                    .filter(a -> searchQuery.isEmpty() || 
-                            (a.getEmployee().getName() != null && 
+                    .filter(a -> searchQuery.isEmpty() ||
+                            (a.getEmployee().getName() != null &&
                              a.getEmployee().getName().toLowerCase().contains(searchQuery)) ||
-                            (a.getEmployee().getRole() != null && 
+                            (a.getEmployee().getRole() != null &&
                              a.getEmployee().getRole().toLowerCase().contains(searchQuery)))
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
-                    
+
             return ResponseEntity.ok(result);
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(404)
             .body(Collections.emptyList());
         }
     }
+
+    @PostMapping("/clock-in")
+    public ResponseEntity<?> clockIn(HttpServletRequest request) {
+    try {
+        String token = request.getHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        token = token.substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Employee employee = employeeService.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        LocalTime now = LocalTime.now();
+
+        Attendance attendance = attendanceService.clockIn(employee.getId(), now);
+
+        return ResponseEntity.ok("Clock-in recorded at " + now.toString());
+
+    } catch (IllegalStateException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ResourceNotFoundException e) {
+        return ResponseEntity.status(404).body(e.getMessage());
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body("Error during clock-in");
+    }
+}
+
+    @PostMapping("/clock-out")
+    public ResponseEntity<?> clockOut(HttpServletRequest request) {
+    try {
+        String token = request.getHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        token = token.substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        Employee employee = employeeService.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        LocalTime now = LocalTime.now();
+
+        Attendance attendance = attendanceService.clockOut(employee.getId(), now);
+
+        return ResponseEntity.ok("Clock-out recorded at " + now.toString());
+
+    } catch (IllegalStateException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ResourceNotFoundException e) {
+        return ResponseEntity.status(404).body(e.getMessage());
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body("Error during clock-out");
+    }
+  }
 
     @GetMapping("/employee/{employeeId}/date-range")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployeeAndDateRange(
@@ -116,38 +176,47 @@ public class AttendanceController {
     @PostMapping
     public ResponseEntity<AttendanceDTO> createAttendance(@RequestBody AttendanceDTO dto) {
         try {
+            if (dto.getEmployeeId() == null) {
+                return ResponseEntity.badRequest().body(null);
+            }
             Employee employee = employeeService.getEmployeeById(dto.getEmployeeId());
 
             Attendance attendance = new Attendance();
             attendance.setEmployee(employee);
             attendance.setDate(dto.getDate() != null ? dto.getDate() : LocalDate.now());
 
-            // Parse time strings to LocalTime
             if (dto.getClockIn() != null && !dto.getClockIn().isEmpty()) {
-                attendance.setClockIn(LocalTime.parse(dto.getClockIn()));
+                try {
+                    attendance.setClockIn(LocalTime.parse(dto.getClockIn()));
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(null);
+                }
             }
 
             if (dto.getClockOut() != null && !dto.getClockOut().isEmpty()) {
-                attendance.setClockOut(LocalTime.parse(dto.getClockOut()));
+                try {
+                    attendance.setClockOut(LocalTime.parse(dto.getClockOut()));
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(null);
+                }
             }
 
-            // Validate times if both are present
             if (attendance.getClockIn() != null && attendance.getClockOut() != null) {
                 validateAttendanceTimes(attendance.getClockIn(), attendance.getClockOut());
-                
-                // Calculate hours
+
                 attendance.setTotalHours(attendanceService.calculateTotalHours(
                         attendance.getClockIn(), attendance.getClockOut()));
                 attendance.setOtHours(attendanceService.calculateOTHours(
                         attendance.getClockIn(), attendance.getClockOut(), LocalTime.of(16, 0)));
             } else {
-                // If one time is missing, set to zero hours
                 attendance.setTotalHours("0:00:00");
                 attendance.setOtHours("0:00:00");
             }
 
             Attendance savedAttendance = attendanceService.saveAttendance(attendance);
             return ResponseEntity.ok(convertToDTO(savedAttendance));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.badRequest().body(null);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
@@ -155,50 +224,52 @@ public class AttendanceController {
         }
     }
 
-
-    
-    
     @PutMapping("/{id}")
     public ResponseEntity<AttendanceDTO> updateAttendance(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestBody AttendanceDTO dto) {
         try {
             Attendance attendance = attendanceService.getAttendanceById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Attendance not found"));
-            
-            // Only update allowed fields
+
             if (dto.getEmployeeId() != null) {
                 Employee employee = employeeService.getEmployeeById(dto.getEmployeeId());
                 attendance.setEmployee(employee);
             }
-            
+
             if (dto.getDate() != null) {
                 attendance.setDate(dto.getDate());
             }
-            
-            // Update clock times
+
             LocalTime clockIn = attendance.getClockIn();
             LocalTime clockOut = attendance.getClockOut();
-            
+
             if (dto.getClockIn() != null && !dto.getClockIn().isEmpty()) {
-                clockIn = LocalTime.parse(dto.getClockIn());
-                attendance.setClockIn(clockIn);
+                try {
+                    clockIn = LocalTime.parse(dto.getClockIn());
+                    attendance.setClockIn(clockIn);
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(null);
+                }
             }
-            
+
             if (dto.getClockOut() != null && !dto.getClockOut().isEmpty()) {
-                clockOut = LocalTime.parse(dto.getClockOut());
-                attendance.setClockOut(clockOut);
+                try {
+                    clockOut = LocalTime.parse(dto.getClockOut());
+                    attendance.setClockOut(clockOut);
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(null);
+                }
             }
-            
-            // Validate and recalculate hours if both times present
+
             if (clockIn != null && clockOut != null) {
                 validateAttendanceTimes(clockIn, clockOut);
-                
+
                 attendance.setTotalHours(attendanceService.calculateTotalHours(clockIn, clockOut));
                 attendance.setOtHours(attendanceService.calculateOTHours(
                         clockIn, clockOut, LocalTime.of(16, 0)));
             }
-            
+
             Attendance updatedAttendance = attendanceService.saveAttendance(attendance);
             return ResponseEntity.ok(convertToDTO(updatedAttendance));
         } catch (ResourceNotFoundException e) {
@@ -209,32 +280,22 @@ public class AttendanceController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
-    /**
-     * Validates that the attendance times are logical
-     * @param clockIn The clock-in time
-     * @param clockOut The clock-out time
-     * @throws IllegalArgumentException if times are invalid
-     */
+
     private void validateAttendanceTimes(LocalTime clockIn, LocalTime clockOut) {
         if (clockIn != null && clockOut != null) {
-            // Calculate duration between times
             Duration duration;
             if (clockOut.isBefore(clockIn)) {
-                // Overnight shift
                 Duration firstPart = Duration.between(clockIn, LocalTime.MAX);
                 Duration secondPart = Duration.between(LocalTime.MIN, clockOut);
                 duration = firstPart.plus(secondPart).plusSeconds(1);
             } else {
                 duration = Duration.between(clockIn, clockOut);
             }
-            
-            // Validate duration (for example, maximum 16 hours shift)
+
             if (duration.toHours() > 16) {
                 throw new IllegalArgumentException("Shift duration cannot exceed 16 hours");
             }
-            
-            // Ensure duration is not negative or zero
+
             if (duration.isZero() || duration.isNegative()) {
                 throw new IllegalArgumentException("Clock-out time must be after clock-in time");
             }
@@ -251,21 +312,29 @@ public class AttendanceController {
             dto.setRole(employee.getRole() != null ? employee.getRole() : "");
             dto.setStatus(employee.getStatus() != null ? employee.getStatus().toString() : "Unknown");
             dto.setAvatar(employee.getAvatar() != null ? employee.getAvatar() : "");
+
+             if (attendance.getClockIn() != null && attendance.getClockOut() == null) {
+            dto.setStatus("Active");  // Clocked in but not out
+        } else if (attendance.getClockOut() != null) {
+            dto.setStatus("Leave");   // Clocked out
         } else {
-            // Set default values for null employee
+            dto.setStatus("Unknown"); // No clock-in info
+        }
+        } else {
             dto.setEmployeeId(null);
             dto.setEmployeeName("Unknown");
             dto.setRole("Unknown");
             dto.setStatus("Unknown");
             dto.setAvatar("");
         }
-        
-        dto.setClockIn(attendance.getClockIn() != null ? attendance.getClockIn().toString() : "");
-        dto.setClockOut(attendance.getClockOut() != null ? attendance.getClockOut().toString() : "");
+
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        dto.setClockIn(attendance.getClockIn() != null ? attendance.getClockIn().format(timeFormatter) : "");
+        dto.setClockOut(attendance.getClockOut() != null ? attendance.getClockOut().format(timeFormatter) : "");
         dto.setTotalHours(attendance.getTotalHours() != null ? attendance.getTotalHours() : "0:00:00");
         dto.setOtHours(attendance.getOtHours() != null ? attendance.getOtHours() : "0:00:00");
         dto.setDate(attendance.getDate());
-        
+
         return dto;
     }
 }

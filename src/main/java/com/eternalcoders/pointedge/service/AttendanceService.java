@@ -44,7 +44,7 @@ public class AttendanceService {
         attendanceRepository.deleteById(id);
     }
     
-    // New method for bulk deletion
+    // Bulk delete method
     public void deleteAttendances(List<Long> ids) {
         attendanceRepository.deleteAllById(ids);
     }
@@ -69,15 +69,16 @@ public class AttendanceService {
         return attendanceRepository.findByEmployeeAndDate(employee, date);
     }
 
+    // Clock-in logic
     public Attendance clockIn(Long employeeId, LocalTime time) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
 
-        // Check if employee already clocked in today
+        // Check if employee already clocked in today but not clocked out
         List<Attendance> todayAttendances = attendanceRepository.findByEmployeeAndDate(employee, LocalDate.now());
         for (Attendance existing : todayAttendances) {
             if (existing.getClockOut() == null) {
-                throw new IllegalStateException("Employee already clocked in but not out");
+                throw new IllegalStateException("Employee already clocked in but not clocked out");
             }
         }
 
@@ -91,6 +92,7 @@ public class AttendanceService {
         return attendanceRepository.save(attendance);
     }
 
+    // Clock-out logic with improved validation
     public Attendance clockOut(Long employeeId, LocalTime time) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
@@ -100,33 +102,33 @@ public class AttendanceService {
             throw new IllegalStateException("No clock-in record found for today");
         }
 
-        // Find the most recent attendance without clock out
-        Attendance attendance = null;
-        for (Attendance att : todayAttendances) {
-            if (att.getClockOut() == null) {
-                attendance = att;
-                break;
+        Attendance attendance = todayAttendances.stream()
+                .filter(a -> a.getClockOut() == null)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Employee already clocked out"));
+
+        LocalTime clockIn = attendance.getClockIn();
+        if (clockIn != null) {
+            boolean invalidTime = false;
+            if (time.isBefore(clockIn)) {
+                Duration duration = Duration.between(time, clockIn);
+                if (duration.toHours() >= 16) {
+                    invalidTime = true;
+                }
             }
-        }
-
-        if (attendance == null) {
-            throw new IllegalStateException("Employee already clocked out");
-        }
-
-        // Validate clock out time is after clock in time
-        if (attendance.getClockIn() != null && time.isBefore(attendance.getClockIn())) {
-            if (Duration.between(attendance.getClockIn(), time).toHours() > 16) {
-                throw new IllegalArgumentException("Clock out time is too early compared to clock in time");
+            if (invalidTime) {
+                throw new IllegalArgumentException("Clock out time cannot be before clock in time");
             }
         }
 
         attendance.setClockOut(time);
-        attendance.setTotalHours(calculateTotalHours(attendance.getClockIn(), time));
-        attendance.setOtHours(calculateOTHours(attendance.getClockIn(), time, LocalTime.of(16, 0)));
+        attendance.setTotalHours(calculateTotalHours(clockIn, time));
+        attendance.setOtHours(calculateOTHours(clockIn, time, LocalTime.of(16, 0)));
 
         return attendanceRepository.save(attendance);
     }
 
+    // Calculate total hours between clock-in and clock-out
     public String calculateTotalHours(LocalTime clockIn, LocalTime clockOut) {
         if (clockIn == null || clockOut == null) {
             return "0:00:00";
@@ -134,10 +136,10 @@ public class AttendanceService {
 
         Duration duration;
         if (clockOut.isBefore(clockIn)) {
-            // Overnight shift
+            // Overnight shift (e.g. clockIn 22:00, clockOut 06:00)
             Duration firstPart = Duration.between(clockIn, LocalTime.MAX);
             Duration secondPart = Duration.between(LocalTime.MIN, clockOut);
-            duration = firstPart.plus(secondPart).plusSeconds(1); // Midnight edge case
+            duration = firstPart.plus(secondPart).plusSeconds(1); // Add one second for midnight edge case
         } else {
             duration = Duration.between(clockIn, clockOut);
         }
@@ -149,6 +151,7 @@ public class AttendanceService {
         return String.format("%d:%02d:%02d", hours, minutes, seconds);
     }
 
+    // Calculate overtime hours (after standard end time)
     public String calculateOTHours(LocalTime clockIn, LocalTime clockOut, LocalTime standardEnd) {
         if (clockIn == null || clockOut == null || clockOut.isBefore(standardEnd)) {
             return "0:00:00";
