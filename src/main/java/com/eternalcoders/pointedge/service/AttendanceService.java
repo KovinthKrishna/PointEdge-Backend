@@ -123,7 +123,7 @@ public class AttendanceService {
 
         attendance.setClockOut(time);
         attendance.setTotalHours(calculateTotalHours(clockIn, time));
-        attendance.setOtHours(calculateOTHours(clockIn, time, LocalTime.of(16, 0)));
+        attendance.setOtHours(calculateOTHours(clockIn, time, LocalTime.of(17, 0)));
 
         return attendanceRepository.save(attendance);
     }
@@ -151,17 +151,70 @@ public class AttendanceService {
         return String.format("%d:%02d:%02d", hours, minutes, seconds);
     }
 
-    // Calculate overtime hours (after standard end time)
+    // Calculate overtime hours based on clock in time relative to standard end time
     public String calculateOTHours(LocalTime clockIn, LocalTime clockOut, LocalTime standardEnd) {
-        if (clockIn == null || clockOut == null || clockOut.isBefore(standardEnd)) {
+        if (clockIn == null || clockOut == null) {
             return "0:00:00";
         }
 
-        Duration duration = Duration.between(standardEnd, clockOut);
-        long hours = duration.toHours();
-        long minutes = duration.toMinutesPart();
-        long seconds = duration.toSecondsPart();
+        Duration otDuration;
+        
+        if (clockIn.isBefore(standardEnd) || clockIn.equals(standardEnd)) {
+            // Employee clocked in before or at the standard end time
+            // OT = time between standard end time and clock out time (if clock out is after end time)
+            if (!clockOut.isAfter(standardEnd)) {
+                return "0:00:00"; // No overtime if clock out is before or at end time
+            }
+            otDuration = Duration.between(standardEnd, clockOut);
+        } else {
+            // Employee clocked in after the standard end time
+            // OT = total hours worked (time between clock in and clock out)
+            if (clockOut.isBefore(clockIn)) {
+                // Handle overnight shift
+                Duration firstPart = Duration.between(clockIn, LocalTime.MAX);
+                Duration secondPart = Duration.between(LocalTime.MIN, clockOut);
+                otDuration = firstPart.plus(secondPart).plusSeconds(1);
+            } else {
+                otDuration = Duration.between(clockIn, clockOut);
+            }
+        }
+        
+        long hours = otDuration.toHours();
+        long minutes = otDuration.toMinutesPart();
+        long seconds = otDuration.toSecondsPart();
 
         return String.format("%d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    // Alternative: Calculate overtime based on total hours worked exceeding standard hours
+    public String calculateOTHoursBasedOnTotalWork(LocalTime clockIn, LocalTime clockOut, int standardWorkHours) {
+        if (clockIn == null || clockOut == null) {
+            return "0:00:00";
+        }
+
+        // Calculate total hours worked
+        Duration totalWorked;
+        if (clockOut.isBefore(clockIn)) {
+            // Overnight shift
+            Duration firstPart = Duration.between(clockIn, LocalTime.MAX);
+            Duration secondPart = Duration.between(LocalTime.MIN, clockOut);
+            totalWorked = firstPart.plus(secondPart).plusSeconds(1);
+        } else {
+            totalWorked = Duration.between(clockIn, clockOut);
+        }
+
+        // Calculate overtime (hours worked beyond standard)
+        long standardHoursInMinutes = standardWorkHours * 60L;
+        long totalWorkedMinutes = totalWorked.toMinutes();
+        
+        if (totalWorkedMinutes <= standardHoursInMinutes) {
+            return "0:00:00";
+        }
+
+        long otMinutes = totalWorkedMinutes - standardHoursInMinutes;
+        long hours = otMinutes / 60;
+        long minutes = otMinutes % 60;
+
+        return String.format("%d:%02d:00", hours, minutes);
     }
 }

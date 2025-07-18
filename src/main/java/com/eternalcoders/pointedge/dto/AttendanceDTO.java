@@ -28,4 +28,7 @@ public class AttendanceDTO {
     private String status;
     private String avatar;
     private LocalDate date;
+    private String breakTime;
+    public String getBreakTime() { return breakTime; }
+    public void setBreakTime(String breakTime) { this.breakTime = breakTime; }
 }

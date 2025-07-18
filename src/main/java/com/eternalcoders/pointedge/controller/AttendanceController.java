@@ -22,7 +22,9 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/attendances")
@@ -52,10 +54,16 @@ public class AttendanceController {
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployee(@PathVariable Long employeeId) {
         try {
             Employee employee = employeeService.getEmployeeById(employeeId);
-            List<AttendanceDTO> attendances = attendanceService.findByEmployee(employee).stream()
-                .map(this::convertToDTO)
+            
+            // Sort attendances by date and clockIn
+            List<Attendance> attendances = attendanceService.findByEmployee(employee)
+                .stream()
+                .sorted(Comparator.comparing(Attendance::getDate)
+                                  .thenComparing(Attendance::getClockIn, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
-            return ResponseEntity.ok(attendances);
+
+            List<AttendanceDTO> attendanceDTOs = calculateBreakTimes(attendances);
+            return ResponseEntity.ok(attendanceDTOs);
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -102,59 +110,59 @@ public class AttendanceController {
 
     @PostMapping("/clock-in")
     public ResponseEntity<?> clockIn(HttpServletRequest request) {
-    try {
-        String token = request.getHeader("Authorization");
-        if (token == null || !token.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Unauthorized");
+        try {
+            String token = request.getHeader("Authorization");
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            token = token.substring(7);
+            String email = jwtUtil.extractUsername(token);
+
+            Employee employee = employeeService.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+            LocalTime now = LocalTime.now();
+
+            Attendance attendance = attendanceService.clockIn(employee.getId(), now);
+
+            return ResponseEntity.ok("Clock-in recorded at " + now.toString());
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error during clock-in");
         }
-        token = token.substring(7);
-        String email = jwtUtil.extractUsername(token);
-
-        Employee employee = employeeService.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
-
-        LocalTime now = LocalTime.now();
-
-        Attendance attendance = attendanceService.clockIn(employee.getId(), now);
-
-        return ResponseEntity.ok("Clock-in recorded at " + now.toString());
-
-    } catch (IllegalStateException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (ResourceNotFoundException e) {
-        return ResponseEntity.status(404).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body("Error during clock-in");
     }
-}
 
     @PostMapping("/clock-out")
     public ResponseEntity<?> clockOut(HttpServletRequest request) {
-    try {
-        String token = request.getHeader("Authorization");
-        if (token == null || !token.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Unauthorized");
+        try {
+            String token = request.getHeader("Authorization");
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            token = token.substring(7);
+            String email = jwtUtil.extractUsername(token);
+
+            Employee employee = employeeService.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+            LocalTime now = LocalTime.now();
+
+            Attendance attendance = attendanceService.clockOut(employee.getId(), now);
+
+            return ResponseEntity.ok("Clock-out recorded at " + now.toString());
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error during clock-out");
         }
-        token = token.substring(7);
-        String email = jwtUtil.extractUsername(token);
-
-        Employee employee = employeeService.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
-
-        LocalTime now = LocalTime.now();
-
-        Attendance attendance = attendanceService.clockOut(employee.getId(), now);
-
-        return ResponseEntity.ok("Clock-out recorded at " + now.toString());
-
-    } catch (IllegalStateException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (ResourceNotFoundException e) {
-        return ResponseEntity.status(404).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body("Error during clock-out");
     }
-  }
 
     @GetMapping("/employee/{employeeId}/date-range")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployeeAndDateRange(
@@ -281,6 +289,43 @@ public class AttendanceController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteAttendance(@PathVariable Long id) {
+        try {
+            attendanceService.deleteAttendance(id);
+            return ResponseEntity.ok("Attendance deleted successfully");
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // Helper method to calculate break times for a list of attendances
+    private List<AttendanceDTO> calculateBreakTimes(List<Attendance> attendances) {
+        List<AttendanceDTO> attendanceDTOs = new ArrayList<>();
+
+        for (int i = 0; i < attendances.size(); i++) {
+            Attendance current = attendances.get(i);
+            AttendanceDTO dto = convertToDTO(current);
+
+            String breakTime = "00:00:00";
+            if (current.getClockOut() != null && i + 1 < attendances.size()) {
+                Attendance next = attendances.get(i + 1);
+                // Only if next clockIn is after current clockOut and on the same day
+                if (next.getDate().equals(current.getDate()) && next.getClockIn() != null &&
+                    next.getClockIn().isAfter(current.getClockOut())) {
+                    Duration breakDuration = Duration.between(current.getClockOut(), next.getClockIn());
+                    long hours = breakDuration.toHours();
+                    long minutes = breakDuration.toMinutes() % 60;
+                    long seconds = breakDuration.getSeconds() % 60;
+                    breakTime = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+                }
+            }
+            dto.setBreakTime(breakTime);
+            attendanceDTOs.add(dto);
+        }
+        return attendanceDTOs;
+    }
+
     private void validateAttendanceTimes(LocalTime clockIn, LocalTime clockOut) {
         if (clockIn != null && clockOut != null) {
             Duration duration;
@@ -310,16 +355,16 @@ public class AttendanceController {
             dto.setEmployeeId(employee.getId());
             dto.setEmployeeName(employee.getName() != null ? employee.getName() : "");
             dto.setRole(employee.getRole() != null ? employee.getRole() : "");
-            dto.setStatus(employee.getStatus() != null ? employee.getStatus().toString() : "Unknown");
             dto.setAvatar(employee.getAvatar() != null ? employee.getAvatar() : "");
 
-             if (attendance.getClockIn() != null && attendance.getClockOut() == null) {
-            dto.setStatus("Active");  // Clocked in but not out
-        } else if (attendance.getClockOut() != null) {
-            dto.setStatus("Leave");   // Clocked out
-        } else {
-            dto.setStatus("Unknown"); // No clock-in info
-        }
+            // Set status based on attendance state
+            if (attendance.getClockIn() != null && attendance.getClockOut() == null) {
+                dto.setStatus("Active");  // Clocked in but not out
+            } else if (attendance.getClockOut() != null) {
+                dto.setStatus("Leave");   // Clocked out
+            } else {
+                dto.setStatus("Unknown"); // No clock-in info
+            }
         } else {
             dto.setEmployeeId(null);
             dto.setEmployeeName("Unknown");
@@ -334,6 +379,8 @@ public class AttendanceController {
         dto.setTotalHours(attendance.getTotalHours() != null ? attendance.getTotalHours() : "0:00:00");
         dto.setOtHours(attendance.getOtHours() != null ? attendance.getOtHours() : "0:00:00");
         dto.setDate(attendance.getDate());
+        // Set default break time - will be overridden by calculateBreakTimes method when needed
+        dto.setBreakTime("00:00:00");
 
         return dto;
     }
