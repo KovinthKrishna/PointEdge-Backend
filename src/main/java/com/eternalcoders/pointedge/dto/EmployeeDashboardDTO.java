@@ -28,17 +28,17 @@ public class EmployeeDashboardDTO {
     // Nested class for productivity data
     @Data
     public static class MonthlyProductivity {
-        private String month;  // "Jan", "Feb", etc.
-        private int primary;   // Regular hours
-        private int secondary; // OT hours
+        private String month;        // "Jan", "Feb", etc.
+        private int primary;         // Productivity percentage (0-100%)
+        private int secondary;       // Total valid OT hours (max 4h per employee)
     }
     
     // Nested class for daily attendance
     @Data
     public static class DailyAttendance {
-        private String date;
-        private String dayOfWeek;
-        private int attendancePercentage;
-        private int height; // For UI display scaling
+        private String date;                    // "2025-07-18"
+        private String dayOfWeek;               // "Mon", "Tue", etc.
+        private int attendancePercentage;       // 0-100%
+        private int height;                     // For UI display scaling (percentage * 1.6)
     }
 }
