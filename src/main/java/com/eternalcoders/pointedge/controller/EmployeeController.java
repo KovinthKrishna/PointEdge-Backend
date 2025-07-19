@@ -10,8 +10,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,6 +54,33 @@ public class EmployeeController {
         }
         return ResponseEntity.status(401).body("Unauthorized");
     }
+
+    @PostMapping("/update-profile")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String> updateProfile(@RequestBody EmployeeDTO dto, Principal principal) {
+        String email = principal.getName();
+        employeeService.updateNameAndAvatar(email, dto.getName(), dto.getAvatar());
+        return ResponseEntity.ok("Profile updated successfully");
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String> changePassword(@RequestBody EmployeeDTO dto, Principal principal) {
+        String email = principal.getName();
+
+        // Validate input passwords from dto
+        String currentPassword = dto.getConfirmPassword();  // use confirmPassword field as current password
+        String newPassword = dto.getTempPassword();         // use tempPassword field as new password
+
+        if (currentPassword == null || newPassword == null || currentPassword.isBlank() || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body("Current and new password must be provided");
+        }
+
+        employeeService.changePassword(email, currentPassword, newPassword);
+        return ResponseEntity.ok("Password changed successfully");
+    }
+
+
 
     @GetMapping
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees() {

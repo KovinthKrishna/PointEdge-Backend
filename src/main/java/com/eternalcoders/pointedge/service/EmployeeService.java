@@ -99,4 +99,33 @@ public class EmployeeService {
     public List<Employee> findByStatus(Employee.EmployeeStatus status) {
         return employeeRepository.findByStatus(status);
     }
+
+    public void updateNameAndAvatar(String email, String name, String avatar) {
+        Employee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        if (name != null && !name.isBlank()) {
+            employee.setName(name);
+        }
+
+        if (avatar != null && !avatar.isBlank()) {
+            employee.setAvatar(avatar);
+        }
+
+        if ((name != null && !name.isBlank()) || (avatar != null && !avatar.isBlank())) {
+            employeeRepository.save(employee);
+        }
+    }
+
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        Employee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        if (!passwordEncoder.matches(currentPassword, employee.getTempPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        employee.setTempPassword(passwordEncoder.encode(newPassword));
+        employeeRepository.save(employee);
+    }
 }

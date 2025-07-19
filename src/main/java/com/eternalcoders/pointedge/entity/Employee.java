@@ -1,16 +1,15 @@
 package com.eternalcoders.pointedge.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
 @Entity
 @Table(name = "employees")
 @Data
+@Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Employee {
@@ -31,10 +30,8 @@ public class Employee {
     private String phoneNumber;
 
     @Column(nullable = false)
-    private String name; 
+    private String name;
 
-    // Auth Info
-    @Setter
     private String tempPassword;
 
     // Role and avatar
