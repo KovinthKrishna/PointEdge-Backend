@@ -1,8 +1,10 @@
 package com.eternalcoders.pointedge.service;
 
+import com.eternalcoders.pointedge.dto.OrderRequestDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.entity.OrderItem;
+import com.eternalcoders.pointedge.entity.Product;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
@@ -15,6 +17,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.List;
 
 @Service
 public class OrderService {
@@ -69,5 +72,36 @@ public class OrderService {
             default -> null;
         };
         return orderItemRepository.getTotalOrdersForProducts(brandId, categoryId, startDate, endDate, search, pageable);
+    }
+
+    @Transactional
+    public Order createOrderFromDTO(OrderRequestDTO dto) {
+        Order order = new Order();
+        order.setOrderDate(dto.getOrderDate());
+
+        order.setCustomerName(dto.getCustomerName());
+        order.setCustomerPhone(dto.getCustomerPhone());
+        order.setLoyaltyPoints(dto.getLoyaltyPoints());
+        order.setDiscountCode(dto.getDiscountCode());
+
+        order.setAmount(dto.getAmount());
+        order.setTotalDiscount(dto.getTotalDiscount());
+        order.setTotal(dto.getTotal());
+        order.setCashierName(dto.getCashierName());
+
+        List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
+            Product product = productRepository.findById(itemDTO.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProduct(product);
+            orderItem.setQuantity(itemDTO.getQuantity());
+            orderItem.setPricePerUnit(itemDTO.getPricePerUnit());
+            orderItem.setOrder(order);
+            return orderItem;
+        }).toList();
+
+        order.setOrderItems(orderItems);
+
+        return orderRepository.save(order);
     }
 }
