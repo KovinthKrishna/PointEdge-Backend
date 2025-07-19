@@ -26,6 +26,18 @@ public class Order {
     @CreationTimestamp
     private LocalDateTime orderDate;
 
+    private String customerName;
+    private String customerPhone;
+    private Integer loyaltyPoints;
+    private String discountCode;
+
+    private Double amount;
+    private Double totalDiscount;
+    private Double total;
+
+    private Long employeeId;
+    private String cashierName;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems;

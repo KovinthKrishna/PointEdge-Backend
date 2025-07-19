@@ -1,5 +1,6 @@
 package com.eternalcoders.pointedge.controller;
 
+import com.eternalcoders.pointedge.dto.OrderRequestDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.service.OrderService;
@@ -38,5 +39,11 @@ public class OrderController {
             @PageableDefault(size = 20) Pageable pageable
     ) {
         return ResponseEntity.ok(orderService.getTotalOrdersForProducts(brandId, categoryId, timeFilter, search, pageable));
+    }
+
+    @PostMapping("/save")
+    public ResponseEntity<Order> saveOrder(@RequestBody OrderRequestDTO dto) {
+        Order order = orderService.createOrderFromDTO(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 }
