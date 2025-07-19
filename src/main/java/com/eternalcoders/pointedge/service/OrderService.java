@@ -88,7 +88,7 @@ public class OrderService {
         order.setTotalDiscount(dto.getTotalDiscount());
         order.setTotal(dto.getTotal());
         order.setCashierName(dto.getCashierName());
-
+        order.setEmployeeId(dto.getEmployeeId());
         List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));

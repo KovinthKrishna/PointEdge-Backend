@@ -35,6 +35,7 @@ public class Order {
     private Double totalDiscount;
     private Double total;
 
+    private Long employeeId;
     private String cashierName;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

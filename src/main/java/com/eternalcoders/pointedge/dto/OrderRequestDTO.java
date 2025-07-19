@@ -14,6 +14,7 @@ public class OrderRequestDTO {
     private double amount;
     private double totalDiscount;
     private double total;
+    private Long employeeId;
     private String cashierName;
     private LocalDateTime orderDate;
     private List<OrderItemDTO> items;
