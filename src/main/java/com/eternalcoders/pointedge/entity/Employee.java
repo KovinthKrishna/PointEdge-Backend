@@ -1,16 +1,16 @@
 package com.eternalcoders.pointedge.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
 @Entity
 @Table(name = "employees")
 @Data
+@Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Employee {
@@ -31,10 +31,8 @@ public class Employee {
     private String phoneNumber;
 
     @Column(nullable = false)
-    private String name; 
+    private String name;
 
-    // Auth Info
-    @Setter
     private String tempPassword;
 
     // Role and avatar
@@ -51,6 +49,7 @@ public class Employee {
     private EmployeeStatus status;
 
     // Shift / Attendance link
+    @JsonIgnore
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendances;
 
