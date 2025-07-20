@@ -2,12 +2,11 @@ package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.OrderRequestDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
-import com.eternalcoders.pointedge.entity.Order;
-import com.eternalcoders.pointedge.entity.OrderItem;
-import com.eternalcoders.pointedge.entity.Product;
+import com.eternalcoders.pointedge.entity.*;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +23,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
+    @Autowired
+    private InvoiceService invoiceService;
 
     public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository) {
         this.orderRepository = orderRepository;
@@ -75,7 +76,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Order createOrderFromDTO(OrderRequestDTO dto) {
+    public Order createOrderWithInvoice(OrderRequestDTO dto) {
         Order order = new Order();
         order.setOrderDate(dto.getOrderDate());
 
@@ -89,6 +90,7 @@ public class OrderService {
         order.setTotal(dto.getTotal());
         order.setCashierName(dto.getCashierName());
         order.setEmployeeId(dto.getEmployeeId());
+
         List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
@@ -101,7 +103,9 @@ public class OrderService {
         }).toList();
 
         order.setOrderItems(orderItems);
+        Order savedOrder = orderRepository.save(order);
+        Invoice invoice = invoiceService.createInvoiceFromOrder(order);
 
-        return orderRepository.save(order);
+        return order;
     }
 }
