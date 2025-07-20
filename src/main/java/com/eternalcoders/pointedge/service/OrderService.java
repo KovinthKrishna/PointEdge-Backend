@@ -2,20 +2,19 @@ package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.OrderRequestDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
-import com.eternalcoders.pointedge.entity.*;
+import com.eternalcoders.pointedge.entity.Order;
+import com.eternalcoders.pointedge.entity.OrderItem;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAdjusters;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -23,13 +22,13 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
-    @Autowired
-    private InvoiceService invoiceService;
+    private final InvoiceService invoiceService;
 
-    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository) {
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository, InvoiceService invoiceService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
+        this.invoiceService = invoiceService;
     }
 
     public Order getOrderById(Long id) {
@@ -46,39 +45,33 @@ public class OrderService {
     }
 
     public Page<ProductOrderQuantityDTO> getTotalOrdersForProducts(
-            Long brandId, Long categoryId, String timeFilter, String search, Pageable pageable) {
-        LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
-        LocalDateTime startDate = null;
-        LocalDateTime endDate = switch (timeFilter == null ? "" : timeFilter) {
-            case "TODAY" -> {
-                startDate = todayStart;
-                yield todayStart.plusDays(1);
-            }
-            case "YESTERDAY" -> {
-                startDate = todayStart.minusDays(1);
-                yield todayStart;
-            }
-            case "THIS_WEEK" -> {
-                startDate = todayStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                yield startDate.plusWeeks(1);
-            }
-            case "THIS_MONTH" -> {
-                startDate = todayStart.withDayOfMonth(1);
-                yield startDate.plusMonths(1);
-            }
-            case "THIS_YEAR" -> {
-                startDate = todayStart.withDayOfYear(1);
-                yield startDate.plusYears(1);
-            }
-            default -> null;
-        };
-        return orderItemRepository.getTotalOrdersForProducts(brandId, categoryId, startDate, endDate, search, pageable);
+            Long brandId,
+            Long categoryId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String search,
+            Pageable pageable) {
+        LocalDateTime startDateWithTime = null;
+        LocalDateTime endDateWithTime = null;
+
+        if (startDate != null && endDate != null && !startDate.isAfter(endDate)) {
+            startDateWithTime = startDate.atStartOfDay();
+            endDateWithTime = endDate.atTime(LocalTime.MAX);
+        }
+
+        return orderItemRepository.getTotalOrdersForProducts(
+                brandId,
+                categoryId,
+                startDateWithTime,
+                endDateWithTime,
+                search,
+                pageable
+        );
     }
 
     @Transactional
     public Order createOrderWithInvoice(OrderRequestDTO dto) {
-        Order order = new Order();
-        order.setOrderDate(dto.getOrderDate());
+        var order = new Order();
 
         order.setCustomerName(dto.getCustomerName());
         order.setCustomerPhone(dto.getCustomerPhone());
@@ -88,24 +81,27 @@ public class OrderService {
         order.setAmount(dto.getAmount());
         order.setTotalDiscount(dto.getTotalDiscount());
         order.setTotal(dto.getTotal());
-        order.setCashierName(dto.getCashierName());
+
         order.setEmployeeId(dto.getEmployeeId());
+        order.setCashierName(dto.getCashierName());
 
         List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
-            Product product = productRepository.findById(itemDTO.getProductId())
+            var product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
-            OrderItem orderItem = new OrderItem();
+
+            var orderItem = new OrderItem();
             orderItem.setProduct(product);
             orderItem.setQuantity(itemDTO.getQuantity());
             orderItem.setPricePerUnit(itemDTO.getPricePerUnit());
             orderItem.setOrder(order);
+            productRepository.reduceStock(product.getId(), itemDTO.getQuantity());
             return orderItem;
         }).toList();
 
         order.setOrderItems(orderItems);
         Order savedOrder = orderRepository.save(order);
-        Invoice invoice = invoiceService.createInvoiceFromOrder(order);
+        invoiceService.createInvoiceFromOrder(savedOrder);
 
-        return order;
+        return savedOrder;
     }
 }

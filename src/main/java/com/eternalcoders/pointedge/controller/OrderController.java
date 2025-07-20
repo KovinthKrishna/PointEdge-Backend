@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
@@ -34,16 +36,23 @@ public class OrderController {
     public ResponseEntity<Page<ProductOrderQuantityDTO>> getTotalOrdersForProducts(
             @RequestParam(required = false) Long brandId,
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String timeFilter,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return ResponseEntity.ok(orderService.getTotalOrdersForProducts(brandId, categoryId, timeFilter, search, pageable));
+        return ResponseEntity.ok(orderService.getTotalOrdersForProducts(
+                brandId,
+                categoryId,
+                startDate,
+                endDate,
+                search,
+                pageable
+        ));
     }
 
     @PostMapping("/save")
-    public ResponseEntity<Order> saveOrder(@RequestBody OrderRequestDTO dto) {
-        Order order = orderService.createOrderWithInvoice(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(order);
+    public ResponseEntity<Order> saveOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrderWithInvoice(orderRequestDTO));
     }
 }
