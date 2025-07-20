@@ -3,15 +3,14 @@ package com.eternalcoders.pointedge.service;
 import com.eternalcoders.pointedge.dto.PerformanceDTO;
 import com.eternalcoders.pointedge.entity.Attendance;
 import com.eternalcoders.pointedge.entity.Employee;
-import com.eternalcoders.pointedge.entity.SalesTransaction;
+import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.repository.AttendanceRepository;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
-import com.eternalcoders.pointedge.repository.SalesTransactionRepository;
+import com.eternalcoders.pointedge.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,16 +21,16 @@ import java.util.*;
 @Transactional
 public class PerformanceService {
 
-    private final SalesTransactionRepository salesTransactionRepository;
+    private final OrderRepository orderRepository;
     private final EmployeeRepository employeeRepository;
     private final AttendanceRepository attendanceRepository;
 
     @Autowired
     public PerformanceService(
-            SalesTransactionRepository salesTransactionRepository,
+            OrderRepository orderRepository,
             EmployeeRepository employeeRepository,
             AttendanceRepository attendanceRepository) {
-        this.salesTransactionRepository = salesTransactionRepository;
+        this.orderRepository = orderRepository;
         this.employeeRepository = employeeRepository;
         this.attendanceRepository = attendanceRepository;
     }
@@ -96,7 +95,6 @@ public class PerformanceService {
         return sortPerformanceData(performanceDTOs, "sales", "desc");
     }
 
-    // ✅ Add missing methods for the new controller endpoints
     public List<PerformanceDTO> getAllEmployeeTotals(String sortBy, String sortDirection) {
         return getAllEmployeePerformance(sortBy, sortDirection);
     }
@@ -121,7 +119,6 @@ public class PerformanceService {
         return calculateEmployeePerformance(employee, startDate, endDate);
     }
 
-    // ✅ Add other missing methods
     public List<PerformanceDTO> getAllEmployeeSales(String sortDirection) {
         return getAllEmployeePerformance("sales", sortDirection);
     }
@@ -162,32 +159,40 @@ public class PerformanceService {
         return getTopPerformers(startDate, endDate, sortBy, sortDirection);
     }
 
+    // ✅ Updated to use Order table instead of SalesTransaction
     private PerformanceDTO calculateAllTimeEmployeePerformance(Employee employee) {
-        List<SalesTransaction> allTransactions = salesTransactionRepository.findByEmployee(employee);
+        // Get all orders for this employee using employeeId
+        List<Order> allOrders = orderRepository.findByEmployeeId(employee.getId());
         List<Attendance> allAttendances = attendanceRepository.findByEmployee(employee);
 
-        return buildPerformanceDTO(employee, allTransactions, allAttendances);
+        return buildPerformanceDTO(employee, allOrders, allAttendances);
     }
 
+    // ✅ Updated to use Order table instead of SalesTransaction
     private PerformanceDTO calculateEmployeePerformance(Employee employee, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        List<SalesTransaction> transactions = salesTransactionRepository
-                .findByEmployeeAndTransactionDateTimeBetween(employee, startDateTime, endDateTime);
+        // Get orders for this employee within date range
+        List<Order> orders = orderRepository.findByEmployeeIdAndOrderDateBetween(
+                employee.getId(), startDateTime, endDateTime);
 
         List<Attendance> attendances = attendanceRepository
                 .findByEmployeeAndDateBetween(employee, startDate, endDate);
 
-        return buildPerformanceDTO(employee, transactions, attendances);
+        return buildPerformanceDTO(employee, orders, attendances);
     }
 
-    private PerformanceDTO buildPerformanceDTO(Employee employee, List<SalesTransaction> transactions, List<Attendance> attendances) {
-        Integer orderCount = transactions != null ? transactions.size() : 0;
+    // ✅ Updated to use Order list instead of SalesTransaction list
+    private PerformanceDTO buildPerformanceDTO(Employee employee, List<Order> orders, List<Attendance> attendances) {
+        // Count total number of orders
+        Integer orderCount = orders != null ? orders.size() : 0;
 
-        BigDecimal totalSalesAmount = transactions.stream()
-                .map(SalesTransaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Calculate total sales amount from order.total field
+        Double totalSalesAmount = orders.stream()
+                .filter(order -> order.getTotal() != null)  // Filter out null totals
+                .mapToDouble(Order::getTotal)               // Get total from each order
+                .sum();                                     // Sum all totals
 
         String totalWorkingHours = calculateTotalWorkingHours(attendances);
 
@@ -196,9 +201,8 @@ public class PerformanceService {
         dto.setName(employee.getName());
         dto.setAvatar(employee.getAvatar());
         dto.setRole(employee.getRole());
-        // ✅ Fix: Use correct method names that match PerformanceDTO fields
-        dto.setTotalOrders(orderCount);  // Changed from setOrders() to setTotalOrders()
-        dto.setTotalSales(totalSalesAmount.doubleValue());  // Changed from setSales() to setTotalSales()
+        dto.setTotalOrders(orderCount);
+        dto.setTotalSales(totalSalesAmount);  // Now using Double directly
         dto.setWorkingHours(totalWorkingHours);
 
         return dto;
@@ -252,11 +256,9 @@ public class PerformanceService {
 
         switch (sortBy != null ? sortBy.toLowerCase() : "") {
             case "orders":
-                // ✅ Fix: Use correct getter method name
                 comparator = Comparator.comparing(PerformanceDTO::getTotalOrders);
                 break;
             case "sales":
-                // ✅ Fix: Use correct getter method name
                 comparator = Comparator.comparing(PerformanceDTO::getTotalSales);
                 break;
             case "workinghours":
@@ -266,7 +268,6 @@ public class PerformanceService {
                 comparator = Comparator.comparing(PerformanceDTO::getName);
                 break;
             default:
-                // ✅ Fix: Use correct getter method name
                 comparator = Comparator.comparing(PerformanceDTO::getTotalSales);
         }
 
