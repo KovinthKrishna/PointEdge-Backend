@@ -2,7 +2,6 @@ package com.eternalcoders.pointedge.dto;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,7 +15,6 @@ public class OrderRequestDTO {
     private double total;
     private Long employeeId;
     private String cashierName;
-    private LocalDateTime orderDate;
     private List<OrderItemDTO> items;
 }
 
