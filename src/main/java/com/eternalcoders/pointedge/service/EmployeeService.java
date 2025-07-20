@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.eternalcoders.pointedge.dto.EmployeeDashboardDTO;
 
 import java.time.Duration;
 import java.time.LocalTime;
@@ -53,6 +54,11 @@ public class EmployeeService {
 
         employeeRepository.save(employee);
     }
+
+
+    public EmployeeDashboardDTO getDashboardStats() {
+    throw new UnsupportedOperationException("Not implemented in base EmployeeService");
+}
 
     public void sendResetPasswordToken(String email) {
         // Logic for generating and sending password reset token
