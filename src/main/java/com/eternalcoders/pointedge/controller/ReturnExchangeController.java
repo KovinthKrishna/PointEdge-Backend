@@ -99,4 +99,16 @@ public class ReturnExchangeController {
             return ResponseEntity.status(500).body("Error fetching return/exchange history");
         }
     }
+
+    @PostMapping("/process-approved/{requestId}")
+    public ResponseEntity<?> processApproved(@PathVariable Long requestId) {
+        try {
+            logger.info("Finalizing refund for approved requestId: {}", requestId);
+            returnService.finalizeApprovedRefund(requestId);
+            return ResponseEntity.ok("Refund finalized successfully");
+        } catch (Exception e) {
+            logger.error("Error finalizing refund for requestId: {}", requestId, e);
+            return ResponseEntity.status(500).body("Refund finalization failed");
+        }
+    }
 }
