@@ -26,7 +26,7 @@ public class EmployeeDashboardController {
 
     private final EmployeeService employeeService;
     private final AttendanceService attendanceService;
-    private final OrderRepository orderRepository; // ✅ Add this
+    private final OrderRepository orderRepository; 
 
     // Constants for productivity calculation
     private static final int STANDARD_MONTHLY_WORKING_HOURS = 160; // 160 hours per month
@@ -39,9 +39,9 @@ public class EmployeeDashboardController {
         this.orderRepository = orderRepository; // ✅ Add this
     }
 
-    /**
-     * Get all dashboard data in a single API call
-     */
+   
+     //Get all dashboard data in a single API call
+
     @GetMapping("/employee-stats")
     public ResponseEntity<EmployeeDashboardDTO> getEmployeeDashboard() {
         EmployeeDashboardDTO dashboard = new EmployeeDashboardDTO();
@@ -144,12 +144,7 @@ public class EmployeeDashboardController {
         return ResponseEntity.ok(dashboard);
     }
 
-    /**
-     * Helper method to calculate monthly productivity using the formula:
-     * Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
-     * Standard Monthly Working Hours = 160h
-     * Maximum OT Hours per Employee = 20h per month
-     */
+
     private List<MonthlyProductivity> calculateMonthlyProductivity() {
         List<MonthlyProductivity> productivityData = new ArrayList<>();
         int year = LocalDate.now().getYear();
@@ -205,7 +200,7 @@ public class EmployeeDashboardController {
                     }
                 }
 
-                // Calculate OT hours per employee (with 20h limit)
+                // Calculate OT hours per employee 
                 if (attendance.getOtHours() != null && !attendance.getOtHours().isEmpty()) {
                     String[] parts = attendance.getOtHours().split(":");
                     if (parts.length >= 2) {
@@ -222,7 +217,7 @@ public class EmployeeDashboardController {
                     .mapToDouble(hours -> Math.min(hours, MAX_OT_HOURS_PER_EMPLOYEE))
                     .sum();
 
-            // Calculate productivity using the formula:
+            
             // Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
             double standardTotalHours = numberOfEmployees * STANDARD_MONTHLY_WORKING_HOURS;
             double productivityPercentage = standardTotalHours > 0 ?
@@ -242,9 +237,7 @@ public class EmployeeDashboardController {
         return productivityData;
     }
 
-    /**
-     * Helper method to calculate weekly attendance
-     */
+    // Helper method to calculate weekly attendance
     private List<DailyAttendance> calculateWeeklyAttendance() {
         List<DailyAttendance> weeklyAttendance = new ArrayList<>();
 
@@ -254,7 +247,7 @@ public class EmployeeDashboardController {
         // Get all employees to calculate percentage
         int totalEmployees = employeeService.getAllEmployees().size();
 
-        // For each day in the past week
+        
         for (int i = 0; i < 7; i++) {
             LocalDate date = startDate.plusDays(i);
 
@@ -271,9 +264,8 @@ public class EmployeeDashboardController {
             int attendancePercentage = totalEmployees > 0 ?
                     (int) (attendedEmployees * 100.0 / totalEmployees) : 0;
 
-            // Calculate a height value based on percentage (scaled for UI display)
-            int height = (int) (attendancePercentage * 1.6); // Scale to match UI heights
-
+            // Calculate a height value based on percentage 
+            int height = (int) (attendancePercentage * 1.6); 
             DailyAttendance dayData = new DailyAttendance();
             dayData.setDate(date.toString());
             dayData.setDayOfWeek(date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
@@ -286,9 +278,8 @@ public class EmployeeDashboardController {
         return weeklyAttendance;
     }
 
-    /**
-     * Get productivity configuration
-     */
+     //Get productivity configuration
+     
     @GetMapping("/productivity-config")
     public ResponseEntity<?> getProductivityConfig() {
         Map<String, Object> config = new HashMap<>();

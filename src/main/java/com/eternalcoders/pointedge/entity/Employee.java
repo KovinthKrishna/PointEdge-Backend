@@ -53,7 +53,6 @@ public class Employee {
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendances;
 
-    // Status Enum
     public enum EmployeeStatus {
         Active, Leave
     }

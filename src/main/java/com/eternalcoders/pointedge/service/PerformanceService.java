@@ -159,7 +159,6 @@ public class PerformanceService {
         return getTopPerformers(startDate, endDate, sortBy, sortDirection);
     }
 
-    // ✅ Updated to use Order table instead of SalesTransaction
     private PerformanceDTO calculateAllTimeEmployeePerformance(Employee employee) {
         // Get all orders for this employee using employeeId
         List<Order> allOrders = orderRepository.findByEmployeeId(employee.getId());
@@ -168,7 +167,6 @@ public class PerformanceService {
         return buildPerformanceDTO(employee, allOrders, allAttendances);
     }
 
-    // ✅ Updated to use Order table instead of SalesTransaction
     private PerformanceDTO calculateEmployeePerformance(Employee employee, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
@@ -183,7 +181,6 @@ public class PerformanceService {
         return buildPerformanceDTO(employee, orders, attendances);
     }
 
-    // ✅ Updated to use Order list instead of SalesTransaction list
     private PerformanceDTO buildPerformanceDTO(Employee employee, List<Order> orders, List<Attendance> attendances) {
         // Count total number of orders
         Integer orderCount = orders != null ? orders.size() : 0;
@@ -202,7 +199,7 @@ public class PerformanceService {
         dto.setAvatar(employee.getAvatar());
         dto.setRole(employee.getRole());
         dto.setTotalOrders(orderCount);
-        dto.setTotalSales(totalSalesAmount);  // Now using Double directly
+        dto.setTotalSales(totalSalesAmount);  
         dto.setWorkingHours(totalWorkingHours);
 
         return dto;
