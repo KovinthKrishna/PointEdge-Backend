@@ -218,6 +218,13 @@ public class EmployeeDashboardController {
                     .sum();
 
             
+            // OT % = (totalValidOTHours / (numberOfEmployees * MAX_OT_HOURS_PER_EMPLOYEE)) * 100
+            double maxPossibleOTHours = numberOfEmployees * MAX_OT_HOURS_PER_EMPLOYEE;
+            double otPercentage = maxPossibleOTHours > 0
+                    ? (totalValidOTHours / maxPossibleOTHours) * 100
+                    : 0;
+
+            
             // Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
             double standardTotalHours = numberOfEmployees * STANDARD_MONTHLY_WORKING_HOURS;
             double productivityPercentage = standardTotalHours > 0 ?
@@ -229,7 +236,7 @@ public class EmployeeDashboardController {
             MonthlyProductivity monthData = new MonthlyProductivity();
             monthData.setMonth(firstDayOfMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
             monthData.setPrimary((int) Math.round(productivityPercentage)); // Productivity percentage
-            monthData.setSecondary((int) Math.round(totalValidOTHours)); // Total valid OT hours
+            monthData.setSecondary((int) Math.round(otPercentage));
 
             productivityData.add(monthData);
         }
