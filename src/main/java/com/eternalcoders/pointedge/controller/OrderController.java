@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -52,7 +53,8 @@ public class OrderController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<Order> saveOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+    public ResponseEntity<Map<String, Object>> saveOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrderWithInvoice(orderRequestDTO));
     }
+
 }

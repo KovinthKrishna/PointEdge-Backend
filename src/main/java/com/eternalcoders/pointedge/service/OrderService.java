@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class OrderService {
@@ -70,25 +72,23 @@ public class OrderService {
     }
 
     @Transactional
-    public Order createOrderWithInvoice(OrderRequestDTO dto) {
+    public Map<String, Object> createOrderWithInvoice(OrderRequestDTO dto) {
         var order = new Order();
-
         order.setCustomerName(dto.getCustomerName());
         order.setCustomerPhone(dto.getCustomerPhone());
         order.setLoyaltyPoints(dto.getLoyaltyPoints());
         order.setDiscountCode(dto.getDiscountCode());
-
         order.setAmount(dto.getAmount());
         order.setTotalDiscount(dto.getTotalDiscount());
         order.setTotal(dto.getTotal());
-
         order.setEmployeeId(dto.getEmployeeId());
         order.setCashierName(dto.getCashierName());
+        order.setCashAmount(dto.getCashAmount());
+        order.setCardAmount(dto.getCardAmount());
 
         List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
             var product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
-
             var orderItem = new OrderItem();
             orderItem.setProduct(product);
             orderItem.setQuantity(itemDTO.getQuantity());
@@ -100,8 +100,17 @@ public class OrderService {
 
         order.setOrderItems(orderItems);
         Order savedOrder = orderRepository.save(order);
-        invoiceService.createInvoiceFromOrder(savedOrder);
 
-        return savedOrder;
+        var savedInvoice = invoiceService.createInvoiceFromOrder(savedOrder);
+
+        Long totalOrderCount = orderRepository.countTotalOrdersByEmployee(savedOrder.getEmployeeId());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("orderId", savedOrder.getId());
+        response.put("invoiceNumber", savedInvoice.getInvoiceNumber());
+        response.put("totalOrdersByEmployee", totalOrderCount);
+
+        return response;
     }
+
 }
