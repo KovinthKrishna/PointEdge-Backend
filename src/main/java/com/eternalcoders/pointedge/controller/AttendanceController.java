@@ -379,7 +379,6 @@ public class AttendanceController {
         dto.setTotalHours(attendance.getTotalHours() != null ? attendance.getTotalHours() : "0:00:00");
         dto.setOtHours(attendance.getOtHours() != null ? attendance.getOtHours() : "0:00:00");
         dto.setDate(attendance.getDate());
-        // Set default break time - will be overridden by calculateBreakTimes method when needed
         dto.setBreakTime("00:00:00");
 
         return dto;
