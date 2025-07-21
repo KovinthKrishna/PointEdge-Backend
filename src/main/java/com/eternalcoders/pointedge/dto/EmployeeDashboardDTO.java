@@ -8,7 +8,8 @@ public class EmployeeDashboardDTO {
     // Overview Stats
     private int totalEmployees;
     private int activeEmployees;
-    private int onLeaveEmployees;
+    private int inactiveEmployees;
+    private int suspendEmployees;
     private String totalHoursWorked;
     private int employeeChangePercent;
     private int hoursChangePercent;
@@ -18,11 +19,13 @@ public class EmployeeDashboardDTO {
     
     private List<MonthlyProductivity> productivityData;
     
-    // Attendance Report Data
+    // Donut Chart Data
     private int activeCount;
-    private int leaveCount;
+    private int inactiveCount;
+    private int suspendCount;
     private int activePercentage;
-    private int leavePercentage;
+    private int inactivePercentage;
+    private int suspendPercentage;
     
     // Weekly Attendance Data
     private List<DailyAttendance> weeklyAttendance;

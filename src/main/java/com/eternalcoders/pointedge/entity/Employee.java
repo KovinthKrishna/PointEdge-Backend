@@ -35,7 +35,6 @@ public class Employee {
 
     private String tempPassword;
 
-    // Role and avatar
     @Column(nullable = false)
     private String role;
 
@@ -48,12 +47,11 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
-    // Shift / Attendance link
     @JsonIgnore
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendances;
 
     public enum EmployeeStatus {
-        Active, Leave
+        Active, Inactive, Suspend, Suspended, Leave
     }
 }
