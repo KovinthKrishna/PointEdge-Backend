@@ -100,4 +100,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * Get recent orders for an employee (limited)
      */
     List<Order> findTop10ByEmployeeIdOrderByOrderDateDesc(Long employeeId);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.employeeId = :employeeId")
+    Long countTotalOrdersByEmployee(@Param("employeeId") Long employeeId);
 }

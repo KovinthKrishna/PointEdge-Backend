@@ -116,8 +116,6 @@ public class EmployeeServiceImpl extends EmployeeService {
         dto.setTotalOrders(totalOrders);
         dto.setTotalSales(totalSales);
 
-        // You can set other dashboard stats here if needed
-
         return dto;
     }
 }
