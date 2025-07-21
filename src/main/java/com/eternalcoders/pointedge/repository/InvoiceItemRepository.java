@@ -10,13 +10,22 @@ import java.util.Optional;
 public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> {
 
     @Query("""
-    SELECT ii FROM InvoiceItem ii
-    WHERE ii.invoice.invoiceNumber = :invoiceNumber AND (
-        (ii.orderItem IS NOT NULL AND ii.orderItem.product.id = :productId)
-        OR
-        (ii.orderItem IS NULL AND ii.productId = :productId)
-    )
+SELECT ii FROM InvoiceItem ii
+JOIN ii.orderItem oi
+JOIN oi.product p
+WHERE ii.invoice.invoiceNumber = :invoiceNumber AND p.id = :productId
 """)
     Optional<InvoiceItem> findByInvoiceNumberAndProductId(@Param("invoiceNumber") String invoiceNumber,
                                                           @Param("productId") Long productId);
+
+    @Query("""
+SELECT ii FROM InvoiceItem ii
+WHERE ii.invoice.invoiceNumber = :invoiceNumber AND ii.productId = :productId
+""")
+    Optional<InvoiceItem> findByInvoiceNumberAndProductIdFromDirectField(@Param("invoiceNumber") String invoiceNumber,
+                                                                         @Param("productId") Long productId);
+
+
+
+
 }

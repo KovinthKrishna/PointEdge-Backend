@@ -1,13 +1,17 @@
 package com.eternalcoders.pointedge.controller;
 
 import com.eternalcoders.pointedge.dto.*;
+import com.eternalcoders.pointedge.entity.CardRefundRecord;
+import com.eternalcoders.pointedge.service.ReturnProcessorService;
 import com.eternalcoders.pointedge.service.ReturnService;
 import com.eternalcoders.pointedge.exception.EntityNotFoundException;
 
 import jakarta.validation.Valid;
+import jakarta.validation.ValidatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,9 +21,13 @@ public class ReturnExchangeController {
 
     private final ReturnService returnService;
     private static final Logger logger = LoggerFactory.getLogger(ReturnExchangeController.class);
+    private final ValidatorFactory validatorFactory;
+    private final ReturnProcessorService returnProcessorService;
 
-    public ReturnExchangeController(ReturnService returnService) {
+    public ReturnExchangeController(ReturnService returnService, ValidatorFactory validatorFactory, ReturnProcessorService returnProcessorService) {
         this.returnService = returnService;
+        this.validatorFactory = validatorFactory;
+        this.returnProcessorService = returnProcessorService;
     }
 
     // ----------------- Fetch Invoice -----------------
@@ -74,16 +82,28 @@ public class ReturnExchangeController {
         }
     }
 
+
     @PostMapping("/card-refund")
     public ResponseEntity<String> processCardRefund(@RequestBody @Valid CardRefundRequestDTO dto) {
-        logger.info("Processing card refund for invoice: {}", dto.getInvoiceNumber());
+        try {
+            logger.info("Processing card refund for invoice: {}", dto.getInvoiceNumber());
+            boolean success = returnService.processCardRefund(dto);
+            // or processCardRefund
 
-        boolean success = returnService.processCardRefund(dto);
-
-        if (success) {
-            return ResponseEntity.ok("Card refund simulated successfully");
-        } else {
-            return ResponseEntity.status(500).body("Card refund simulation failed");
+            if (success) {
+                return ResponseEntity.ok("Card refund processed successfully");
+            } else {
+                return ResponseEntity.status(500).body("Card refund processing failed");
+            }
+        } catch (EntityNotFoundException e) {
+            logger.error("Entity not found during card refund: {}", e.getMessage());
+            return ResponseEntity.status(404).body("Required data not found: " + e.getMessage());
+        } catch (IllegalStateException e) {
+            logger.error("Invalid state during card refund: {}", e.getMessage());
+            return ResponseEntity.status(400).body("Invalid operation: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error processing card refund for invoice: {}", dto.getInvoiceNumber(), e);
+            return ResponseEntity.status(500).body("Unexpected error: " + e.getMessage());
         }
     }
 
@@ -101,14 +121,49 @@ public class ReturnExchangeController {
     }
 
     @PostMapping("/process-approved/{requestId}")
-    public ResponseEntity<?> processApproved(@PathVariable Long requestId) {
+    public ResponseEntity<?> finalizeApprovedRefund(@PathVariable Long requestId) {
         try {
-            logger.info("Finalizing refund for approved requestId: {}", requestId);
+            logger.info("Processing approved refund for request ID {}", requestId);
             returnService.finalizeApprovedRefund(requestId);
-            return ResponseEntity.ok("Refund finalized successfully");
+            return ResponseEntity.ok("Refund finalized");
         } catch (Exception e) {
-            logger.error("Error finalizing refund for requestId: {}", requestId, e);
-            return ResponseEntity.status(500).body("Refund finalization failed");
+            logger.error("Refund finalization failed for request ID {}: {}", requestId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Refund finalization failed");
+        }
+    }
+    @PostMapping("/finalize-exchange/{requestId}")
+    public ResponseEntity<String> finalizeExchange(@PathVariable Long requestId) {
+        try {
+            returnProcessorService.processExchange(requestId);
+            return ResponseEntity.ok("Exchange finalized and completed.");
+        } catch (Exception e) {
+            logger.error("Exchange finalization failed for request ID {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Exchange finalization failed");
+        }
+    }
+
+    @PostMapping("/finalize-cash/{requestId}")
+    public ResponseEntity<String> finalizeCashRefund(@PathVariable Long requestId) {
+        try {
+            returnProcessorService.processCashRefund(requestId);
+            return ResponseEntity.ok("Cash refund finalized and completed.");
+        } catch (Exception e) {
+            logger.error("Cash refund finalization failed for request ID {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Cash refund finalization failed");
+        }
+    }
+
+    @PostMapping("/finalize-card/{requestId}")
+    public ResponseEntity<String> finalizeCardRefund(
+            @PathVariable Long requestId,
+            @Valid @RequestBody CardRefundRequestDTO dto
+    ) {
+        try {
+            returnService.finalizeCardRefund(requestId, dto);
+            return ResponseEntity.ok("Card refund processed");
+        } catch (Exception e) {
+            logger.error("Card refund failed for request ID {}: {}", requestId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Card refund failed");
         }
     }
 }

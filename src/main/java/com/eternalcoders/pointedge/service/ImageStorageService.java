@@ -13,7 +13,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class ImageStorageService {
-    private static final String UPLOAD_DIR = "uploads/";
+    private static final String UPLOAD_DIR = "uploads/return-images/";
 
     public String saveImage(MultipartFile file) throws IOException {
         if (file.isEmpty()) return null;
@@ -30,7 +30,7 @@ public class ImageStorageService {
         Files.write(Paths.get(fullPath), file.getBytes());
 
         log.info("Saved image to {}", fullPath);
-        return fullPath;
+        return fileName; // save only the filename
     }
 
     private String getFileExtension(String filename) {
