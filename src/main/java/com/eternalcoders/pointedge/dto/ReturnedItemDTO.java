@@ -1,16 +1,15 @@
 package com.eternalcoders.pointedge.dto;
 
-import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
 public class ReturnedItemDTO {
-    @NotNull
     private Long itemId;
-
-    @Min(1)
+    private Long invoiceItemId;
     private int quantity;
-
+    private double unitPrice;
+    private double refundAmount;
     private String reason;
-
+    private String photoPath;
+    private String productName;
 }
