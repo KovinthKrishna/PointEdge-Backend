@@ -15,7 +15,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("""
             SELECT new com.eternalcoders.pointedge.dto.OrderStatsDTO(
                 COUNT(DISTINCT o.id),
-                COALESCE(SUM(o.total), 0)
+                COALESCE(SUM(oi.pricePerUnit * oi.quantity), 0)
             )
             FROM Order o
             JOIN o.orderItems oi
