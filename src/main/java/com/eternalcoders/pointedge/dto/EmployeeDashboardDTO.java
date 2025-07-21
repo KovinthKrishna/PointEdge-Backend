@@ -12,6 +12,9 @@ public class EmployeeDashboardDTO {
     private String totalHoursWorked;
     private int employeeChangePercent;
     private int hoursChangePercent;
+
+    private long totalOrders;
+    private double totalSales;
     
     // Productivity Chart Data
     private List<MonthlyProductivity> productivityData;

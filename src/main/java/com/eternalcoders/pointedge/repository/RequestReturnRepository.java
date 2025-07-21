@@ -6,12 +6,13 @@ import org.springframework.stereotype.Repository;
 import com.eternalcoders.pointedge.enums.RequestStatus;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RequestReturnRepository extends JpaRepository<RequestReturn, Long> {
     List<RequestReturn> findByStatus(RequestStatus status);
-
     List<RequestReturn> findByInvoice_InvoiceNumber(String invoiceNumber);
+    Optional<RequestReturn> findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(String invoiceNumber);
 
 }
 

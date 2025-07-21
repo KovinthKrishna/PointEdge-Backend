@@ -1,9 +1,11 @@
 package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.EmployeeDTO;
+import com.eternalcoders.pointedge.dto.EmployeeDashboardDTO;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.entity.PasswordResetToken;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
+import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.PasswordResetTokenRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,17 +22,20 @@ public class EmployeeServiceImpl extends EmployeeService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final OrderRepository orderRepository;
 
     public EmployeeServiceImpl(
             EmployeeRepository employeeRepository,
             PasswordResetTokenRepository tokenRepository,
             PasswordEncoder passwordEncoder,
-            EmailService emailService
+            EmailService emailService,
+            OrderRepository orderRepository
     ) {
         this.employeeRepository = employeeRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -90,5 +95,29 @@ public class EmployeeServiceImpl extends EmployeeService {
         employeeRepository.save(employee);
 
         tokenRepository.delete(resetToken); // Clean up used token
+    }
+
+    @Override
+    public EmployeeDashboardDTO getDashboardStats() {
+        EmployeeDashboardDTO dto = new EmployeeDashboardDTO();
+
+        // Get total orders from orders table
+        long totalOrders = orderRepository.count();
+
+        // Get total sales from orders table
+        double totalSales = orderRepository.findAll()
+            .stream()
+            .mapToDouble(order -> {
+                Double total = order.getTotal();
+                return total != null ? total : 0.0;
+            })
+            .sum();
+
+        dto.setTotalOrders(totalOrders);
+        dto.setTotalSales(totalSales);
+
+        // You can set other dashboard stats here if needed
+
+        return dto;
     }
 }

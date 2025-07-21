@@ -2,6 +2,7 @@ package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.*;
 import com.eternalcoders.pointedge.entity.Invoice;
+import com.eternalcoders.pointedge.entity.InvoiceItem;
 import com.eternalcoders.pointedge.entity.ReturnRecord;
 import com.eternalcoders.pointedge.exception.EntityNotFoundException;
 import com.eternalcoders.pointedge.repository.*;
@@ -38,18 +39,12 @@ public class ReturnService {
         logger.info("Return processed successfully.");
     }
 
-
     @Transactional
     public void handleRefund(ReturnRequestDTO returnRequest) {
         String refundMethod = returnRequest.getRefundMethod();
         String invoiceNumber = returnRequest.getInvoiceNumber();
 
         if ("Exchange".equalsIgnoreCase(refundMethod)) {
-            Long replacementProductId = returnRequest.getReplacementProductId();
-            if (replacementProductId == null) {
-                throw new IllegalArgumentException("Replacement product ID is required for exchange.");
-            }
-
             returnProcessorService.processExchange(
                     returnRequest.getItems(),
                     invoiceNumber
@@ -96,7 +91,12 @@ public class ReturnService {
                 exchangeRequest.getInvoiceNumber()
         );
     }
+
     public List<ReturnRecord> getReturnExchangeHistory(String invoiceNumber) {
         return returnProcessorService.fetchReturnExchangeHistory(invoiceNumber);
+    }
+
+    public void finalizeApprovedRefund(Long requestId) {
+        returnProcessorService.processApprovedRefund(requestId);
     }
 }
