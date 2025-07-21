@@ -1,9 +1,11 @@
 package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.OrderRequestDTO;
+import com.eternalcoders.pointedge.dto.OrderStatsDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.entity.OrderItem;
+import com.eternalcoders.pointedge.exception.InsufficientStockException;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -37,9 +40,20 @@ public class OrderService {
 
     @Transactional
     public Order addOrder(Order order) {
-        for (OrderItem orderItem : order.getOrderItems()) {
-            orderItem.setOrder(order);
-            productRepository.reduceStock(orderItem.getProduct().getId(), orderItem.getQuantity());
+        for (OrderItem item : order.getOrderItems()) {
+            int updated = productRepository.reduceStock(
+                    item.getProduct().getId(),
+                    item.getQuantity()
+            );
+            if (updated == 0) {
+                throw new InsufficientStockException(
+                        item.getProduct().getName()
+                                + " only has " + item.getProduct().getStockQuantity()
+                                + " items left, cannot fulfill quantity of "
+                                + item.getQuantity()
+                );
+            }
+            item.setOrder(order);
         }
         return orderRepository.save(order);
     }
@@ -51,19 +65,19 @@ public class OrderService {
             LocalDate endDate,
             String search,
             Pageable pageable) {
-        LocalDateTime startDateWithTime = null;
-        LocalDateTime endDateWithTime = null;
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
 
         if (startDate != null && endDate != null && !startDate.isAfter(endDate)) {
-            startDateWithTime = startDate.atStartOfDay();
-            endDateWithTime = endDate.atTime(LocalTime.MAX);
+            startDateTime = startDate.atStartOfDay();
+            endDateTime = endDate.atTime(LocalTime.MAX);
         }
 
         return orderItemRepository.getTotalOrdersForProducts(
                 brandId,
                 categoryId,
-                startDateWithTime,
-                endDateWithTime,
+                startDateTime,
+                endDateTime,
                 search,
                 pageable
         );
@@ -85,23 +99,56 @@ public class OrderService {
         order.setEmployeeId(dto.getEmployeeId());
         order.setCashierName(dto.getCashierName());
 
-        List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
+        List<OrderItem> items = new ArrayList<>();
+        for (var itemDTO : dto.getItems()) {
             var product = productRepository.findById(itemDTO.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
+                    .orElseThrow(() -> new RuntimeException(
+                            "Product not found with ID: " + itemDTO.getProductId()
+                    ));
 
-            var orderItem = new OrderItem();
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemDTO.getQuantity());
-            orderItem.setPricePerUnit(itemDTO.getPricePerUnit());
-            orderItem.setOrder(order);
-            productRepository.reduceStock(product.getId(), itemDTO.getQuantity());
-            return orderItem;
-        }).toList();
+            int updated = productRepository.reduceStock(
+                    product.getId(),
+                    itemDTO.getQuantity()
+            );
+            if (updated == 0) {
+                throw new InsufficientStockException(
+                        "Cannot order " + itemDTO.getQuantity()
+                                + " of product " + product.getName()
+                                + " (only " + product.getStockQuantity() + " left)"
+                );
+            }
 
-        order.setOrderItems(orderItems);
-        Order savedOrder = orderRepository.save(order);
-        invoiceService.createInvoiceFromOrder(savedOrder);
+            var oi = new OrderItem();
+            oi.setProduct(product);
+            oi.setQuantity(itemDTO.getQuantity());
+            oi.setPricePerUnit(itemDTO.getPricePerUnit());
+            oi.setOrder(order);
+            items.add(oi);
+        }
+        order.setOrderItems(items);
 
-        return savedOrder;
+        Order saved = orderRepository.save(order);
+        invoiceService.createInvoiceFromOrder(saved);
+
+        return saved;
+    }
+
+    public OrderStatsDTO getOrderStats(
+            Long brandId,
+            Long categoryId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+
+        if (startDate != null && endDate != null && !startDate.isAfter(endDate)) {
+            startDateTime = startDate.atStartOfDay();
+            endDateTime = endDate.plusDays(1).atStartOfDay();
+        }
+
+        return orderRepository.findOrderStats(
+                brandId, categoryId, startDateTime, endDateTime
+        );
     }
 }
