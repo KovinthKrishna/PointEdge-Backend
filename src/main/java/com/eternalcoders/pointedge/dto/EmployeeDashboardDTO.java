@@ -8,7 +8,8 @@ public class EmployeeDashboardDTO {
     // Overview Stats
     private int totalEmployees;
     private int activeEmployees;
-    private int onLeaveEmployees;
+    private int inactiveEmployees;
+    private int suspendEmployees;
     private String totalHoursWorked;
     private int employeeChangePercent;
     private int hoursChangePercent;
@@ -16,14 +17,15 @@ public class EmployeeDashboardDTO {
     private long totalOrders;
     private double totalSales;
     
-    // Productivity Chart Data
     private List<MonthlyProductivity> productivityData;
     
-    // Attendance Report Data
+    // Donut Chart Data
     private int activeCount;
-    private int leaveCount;
+    private int inactiveCount;
+    private int suspendCount;
     private int activePercentage;
-    private int leavePercentage;
+    private int inactivePercentage;
+    private int suspendPercentage;
     
     // Weekly Attendance Data
     private List<DailyAttendance> weeklyAttendance;
@@ -31,17 +33,17 @@ public class EmployeeDashboardDTO {
     // Nested class for productivity data
     @Data
     public static class MonthlyProductivity {
-        private String month;        // "Jan", "Feb", etc.
-        private int primary;         // Productivity percentage (0-100%)
-        private int secondary;       // Total valid OT hours (max 4h per employee)
+        private String month;       
+        private int primary;       
+        private int secondary;       
     }
     
     // Nested class for daily attendance
     @Data
     public static class DailyAttendance {
-        private String date;                    // "2025-07-18"
-        private String dayOfWeek;               // "Mon", "Tue", etc.
-        private int attendancePercentage;       // 0-100%
-        private int height;                     // For UI display scaling (percentage * 1.6)
+        private String date;                    
+        private String dayOfWeek;              
+        private int attendancePercentage;      
+        private int height;                    
     }
 }
