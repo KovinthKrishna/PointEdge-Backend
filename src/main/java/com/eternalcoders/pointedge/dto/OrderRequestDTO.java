@@ -2,6 +2,7 @@ package com.eternalcoders.pointedge.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -15,6 +16,8 @@ public class OrderRequestDTO {
     private double total;
     private Long employeeId;
     private String cashierName;
+    private BigDecimal cashAmount;
+    private BigDecimal cardAmount;
     private List<OrderItemDTO> items;
 }
 
