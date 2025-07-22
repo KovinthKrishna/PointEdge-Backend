@@ -28,12 +28,14 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final InvoiceService invoiceService;
+    private final NotificationService notificationService;
 
-    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository, InvoiceService invoiceService) {
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository, InvoiceService invoiceService, NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
         this.invoiceService = invoiceService;
+        this.notificationService = notificationService;
     }
 
     public Order getOrderById(Long id) {
@@ -116,6 +118,20 @@ public class OrderService {
                         "Cannot order " + itemDTO.getQuantity()
                                 + " of product " + product.getName()
                                 + " (only " + product.getStockQuantity() + " left)"
+                );
+            }
+
+            long newQty = product.getStockQuantity() - itemDTO.getQuantity();
+            if (newQty == 0) {
+                notificationService.createNotification(
+                        product,
+                        product.getName() + " is sold out."
+                );
+            } else if (newQty < product.getMinimumQuantity()) {
+                notificationService.createNotification(
+                        product,
+                        "There are only " + newQty
+                                + " items of " + product.getName() + " in stock."
                 );
             }
 
