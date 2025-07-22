@@ -42,13 +42,14 @@ public class AttendanceController {
         this.jwtUtil = jwtUtil;
     }
 
-    @GetMapping
-    public ResponseEntity<List<AttendanceDTO>> getAllAttendances() {
-        List<AttendanceDTO> attendances = attendanceService.getAllAttendances().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(attendances);
-    }
+   @GetMapping
+public ResponseEntity<List<AttendanceDTO>> getTodayAttendances() {
+    LocalDate today = LocalDate.now();
+    List<AttendanceDTO> attendances = attendanceService.findByDate(today).stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(attendances);
+}
 
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployee(@PathVariable Long employeeId) {

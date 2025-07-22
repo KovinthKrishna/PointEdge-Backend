@@ -155,7 +155,7 @@ public class EmployeeDashboardController {
                 MonthlyProductivity monthData = new MonthlyProductivity();
                 monthData.setMonth(firstDayOfMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
                 monthData.setPrimary(0); // Productivity percentage
-                monthData.setSecondary(0); // OT hours
+                monthData.setSecondary(0); // OT hours (not used anymore)
                 productivityData.add(monthData);
                 continue;
             }
@@ -182,12 +182,9 @@ public class EmployeeDashboardController {
                 continue;
             }
 
-            // Calculate total hours worked and OT hours
+            // Calculate total hours worked
             double totalHoursWorked = 0;
-            Map<Long, Double> employeeOTHours = new HashMap<>();
-
             for (Attendance attendance : monthAttendances) {
-                // Calculate total hours
                 if (attendance.getTotalHours() != null && !attendance.getTotalHours().isEmpty()) {
                     String[] parts = attendance.getTotalHours().split(":");
                     if (parts.length >= 2) {
@@ -195,29 +192,7 @@ public class EmployeeDashboardController {
                         totalHoursWorked += Integer.parseInt(parts[1]) / 60.0;
                     }
                 }
-
-                // Calculate OT hours per employee 
-                if (attendance.getOtHours() != null && !attendance.getOtHours().isEmpty()) {
-                    String[] parts = attendance.getOtHours().split(":");
-                    if (parts.length >= 2) {
-                        double otHours = Integer.parseInt(parts[0]) + Integer.parseInt(parts[1]) / 60.0;
-                        Long employeeId = attendance.getEmployee().getId();
-
-                        employeeOTHours.merge(employeeId, otHours, Double::sum);
-                    }
-                }
             }
-
-            // Apply 20-hour OT limit per employee and calculate total valid OT hours
-            double totalValidOTHours = employeeOTHours.values().stream()
-                    .mapToDouble(hours -> Math.min(hours, MAX_OT_HOURS_PER_EMPLOYEE))
-                    .sum();
-
-            // OT % = (totalValidOTHours / (numberOfEmployees * MAX_OT_HOURS_PER_EMPLOYEE)) * 100
-            double maxPossibleOTHours = numberOfEmployees * MAX_OT_HOURS_PER_EMPLOYEE;
-            double otPercentage = maxPossibleOTHours > 0
-                    ? (totalValidOTHours / maxPossibleOTHours) * 100
-                    : 0;
 
             // Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
             double standardTotalHours = numberOfEmployees * STANDARD_MONTHLY_WORKING_HOURS;
@@ -230,7 +205,7 @@ public class EmployeeDashboardController {
             MonthlyProductivity monthData = new MonthlyProductivity();
             monthData.setMonth(firstDayOfMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
             monthData.setPrimary((int) Math.round(productivityPercentage)); // Productivity percentage
-            monthData.setSecondary((int) Math.round(otPercentage));
+            monthData.setSecondary(0); // OT hours/productivity removed
 
             productivityData.add(monthData);
         }
@@ -283,7 +258,6 @@ public class EmployeeDashboardController {
     public ResponseEntity<?> getProductivityConfig() {
         Map<String, Object> config = new HashMap<>();
         config.put("standardMonthlyWorkingHours", STANDARD_MONTHLY_WORKING_HOURS);
-        config.put("maxOTHoursPerEmployee", MAX_OT_HOURS_PER_EMPLOYEE);
         config.put("productivityFormula", "Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)");
         return ResponseEntity.ok(config);
     }
