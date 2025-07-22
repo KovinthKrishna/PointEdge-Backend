@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     @Modifying
     @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity WHERE p.id = :productId AND p.stockQuantity >= :quantity")
-    void reduceStock(@Param("productId") Long productId, @Param("quantity") long quantity);
+    int reduceStock(@Param("productId") Long productId, @Param("quantity") long quantity);
 
     @Query("SELECT p FROM Product p " +
             "WHERE (:brandId IS NULL OR p.brand.id = :brandId) " +
@@ -33,12 +33,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByBarcode(String barcode);
 
     @Query("""
-    SELECT new com.eternalcoders.pointedge.dto.CategoryDistributionDTO(
-        p.category.name, COUNT(p.id)
-    )
-    FROM Product p
-    WHERE p.hidden = false
-    GROUP BY p.category.name
-""")
+                SELECT new com.eternalcoders.pointedge.dto.CategoryDistributionDTO(
+                    p.category.name, COUNT(p.id)
+                )
+                FROM Product p
+                WHERE p.hidden = false
+                GROUP BY p.category.name
+            """)
     List<CategoryDistributionDTO> getProductCategoryDistribution();
 }

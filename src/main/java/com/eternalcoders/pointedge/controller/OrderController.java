@@ -1,6 +1,7 @@
 package com.eternalcoders.pointedge.controller;
 
 import com.eternalcoders.pointedge.dto.OrderRequestDTO;
+import com.eternalcoders.pointedge.dto.OrderStatsDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.service.OrderService;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -52,7 +54,19 @@ public class OrderController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<Order> saveOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+    public ResponseEntity<Map<String, Object>> saveOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrderWithInvoice(orderRequestDTO));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<OrderStatsDTO> getOrderStats(
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate
+    ) {
+        return ResponseEntity.ok(orderService.getOrderStats(
+                brandId, categoryId, startDate, endDate
+        ));
     }
 }
