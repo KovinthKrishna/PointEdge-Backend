@@ -32,6 +32,7 @@ public class ReturnProcessorService {
     private final CardRefundRecordRepository cardRefundRecordRepository;
     private final CustomerRepository customerRepository;
     private final ReturnItemRepository returnItemRepository;
+    private final EmployeeRepository employeeRepository;
 
     @Autowired
     private ApplicationContext context; // Used for proxy-based method call
@@ -107,9 +108,11 @@ public class ReturnProcessorService {
     }
 
     @Transactional
-    public void initiateRefundRequest(List<ReturnedItemDTO> items, String invoiceNumber, String refundMethod) {
+    public void initiateRefundRequest(List<ReturnedItemDTO> items, String invoiceNumber, String refundMethod, long createdById) {
         Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+        Employee creator = employeeRepository.findById(createdById)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         double totalRefundAmount = 0.0;
         List<ReturnItem> returnItems = new ArrayList<>();
@@ -138,6 +141,7 @@ public class ReturnProcessorService {
         requestReturn.setRefundMethod(refundMethod != null ? refundMethod : "Card");
         requestReturn.setStatus(RequestStatus.PENDING);
         requestReturn.setCreatedAt(LocalDateTime.now());
+        requestReturn.setCreatedBy(creator);
         requestReturn.setTotalRefundAmount(totalRefundAmount);
 
         for (ReturnItem item : returnItems) {
@@ -182,6 +186,7 @@ public class ReturnProcessorService {
             record.setQuantityReturned(item.getQuantity());
             record.setReason(item.getReason());
             record.setRefundMethod(method);
+            record.setRefundAmount(item.getRefundAmount());
             record.setReturnedAt(LocalDateTime.now());
 
             if ("Exchange".equalsIgnoreCase(method)) {
@@ -221,40 +226,6 @@ public class ReturnProcessorService {
         log.info("Refund processed and completed for request id {} using method {}", requestId, method);
     }
 
-    @Transactional
-    public void processExchange(Long requestId) {
-        RequestReturn requestReturn = requestReturnRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
-
-        if (requestReturn.getStatus() != RequestStatus.APPROVED) {
-            throw new IllegalStateException("Refund request must be APPROVED to process exchange.");
-        }
-
-        for (ReturnItem item : requestReturn.getItems()) {
-            if (item.getInvoiceItem() == null) {
-                // Log and skip this item
-                log.error("ReturnItem with id {} has null invoiceItem", item.getId());
-                continue;
-            }
-
-            ReturnRecord record = new ReturnRecord();
-            record.setInvoiceNumber(item.getInvoiceItem().getInvoice().getInvoiceNumber());
-            record.setInvoiceItemId(item.getInvoiceItem().getId());
-            record.setProductId(item.getProduct().getId());
-            record.setQuantityReturned(item.getQuantity());
-            record.setReason(item.getReason());
-            record.setRefundMethod("EXCHANGE");
-            record.setReturnedAt(LocalDateTime.now());
-
-            // Replacement is same product for exchange
-            record.setReplacementProduct(item.getProduct());
-
-            returnRecordRepository.save(record);
-        }
-
-        requestReturn.setStatus(RequestStatus.COMPLETED);
-        requestReturnRepository.save(requestReturn);
-    }
 
     @Transactional
     public void markAsRejected(Long requestId) {
@@ -271,72 +242,76 @@ public class ReturnProcessorService {
     }
 
     @Transactional
-    public void processReturn(List<ReturnedItemDTO> items, String invoiceNumber, String refundMethod) {
-        initiateRefundRequest(items, invoiceNumber, refundMethod);
+    public void processReturn(List<ReturnedItemDTO> items, String invoiceNumber, String refundMethod,long createdById) {
+        initiateRefundRequest(items, invoiceNumber, refundMethod,createdById);
     }
 
     @Transactional
-    public void approveRefundRequest(Long requestId) {
+    public void approveRefundRequest(Long requestId, long adminId) {
         RequestReturn request = requestReturnRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Refund request not found"));
+        Employee admin = employeeRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
 
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new IllegalStateException("Refund request is not in PENDING state.");
         }
 
         request.setStatus(RequestStatus.APPROVED);
+        request.setReviewedBy(admin);
         requestReturnRepository.save(request);
     }
 
+
+
     @Transactional
-    public void processExchange(List<ReturnedItemDTO> returnedItems, String invoiceNumber) {
-        Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber)
-                .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-
-        List<ReturnItem> returnItems = new ArrayList<>();
-
-        for (ReturnedItemDTO dto : returnedItems) {
-            Product product = productRepository.findById(dto.getItemId())
-                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-            InvoiceItem invoiceItem = invoiceItemRepository
-                    .findByInvoiceNumberAndProductId(invoiceNumber, product.getId())
-                    .orElse(null); // Could be null if no matching invoice item
-
-            ReturnItem returnItem = new ReturnItem();
-            returnItem.setProduct(product);
-            returnItem.setQuantity(dto.getQuantity());
-            returnItem.setRefundAmount(0.0);  // No refund amount for exchange
-            returnItem.setReason(dto.getReason());
-            returnItem.setPhotoPath(dto.getPhotoPath());
-            returnItem.setInvoiceItem(invoiceItem);
-            returnItems.add(returnItem);
+    public void processExchangeByInvoiceNumber(String invoiceNumber) {
+        if (invoiceNumber == null || invoiceNumber.isBlank()) {
+            throw new IllegalArgumentException("Invoice number must not be null or empty.");
         }
 
-        RequestReturn requestReturn = new RequestReturn();
-        requestReturn.setInvoice(invoice);
-        requestReturn.setItems(returnItems);
-        requestReturn.setRefundMethod("Exchange");
-        requestReturn.setStatus(RequestStatus.PENDING);  // Or COMPLETED depending on your flow
-        requestReturn.setCreatedAt(LocalDateTime.now());
-        requestReturn.setTotalRefundAmount(0.0); // No refund amount for exchange
+        RequestReturn requestReturn = requestReturnRepository
+                .findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(invoiceNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with invoice: " + invoiceNumber));
 
-        for (ReturnItem item : returnItems) {
-            item.setRequestReturn(requestReturn);
+        if (requestReturn.getStatus() != RequestStatus.APPROVED) {
+            throw new IllegalStateException("Refund request must be APPROVED to process exchange.");
         }
 
+        for (ReturnItem item : requestReturn.getItems()) {
+            if (item.getInvoiceItem() == null || item.getProduct() == null) {
+                log.error("Missing invoiceItem or product for ReturnItem id: {}", item.getId());
+                continue;
+            }
+
+            ReturnRecord record = new ReturnRecord();
+            record.setInvoiceNumber(invoiceNumber);
+            record.setInvoiceItemId(item.getInvoiceItem().getId());
+            record.setProductId(item.getProduct().getId());
+            record.setQuantityReturned(item.getQuantity());
+            record.setReason(item.getReason());
+            record.setRefundMethod("EXCHANGE");
+            record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
+            record.setReplacementProduct(item.getProduct());
+
+            returnRecordRepository.save(record);
+        }
+
+        requestReturn.setStatus(RequestStatus.COMPLETED);
+        requestReturn.setReviewedAt(LocalDateTime.now());
         requestReturnRepository.save(requestReturn);
-        returnItemRepository.saveAll(returnItems);
     }
 
-    // ReturnProcessorService.java
-
-
-
     @Transactional
-    public void processCashRefund(Long requestId) {
-        RequestReturn request = requestReturnRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
+    public void processCashRefundByInvoiceNumber(String invoiceNumber) {
+        if (invoiceNumber == null || invoiceNumber.isBlank()) {
+            throw new IllegalArgumentException("Invoice number must not be null or empty.");
+        }
+
+        RequestReturn request = requestReturnRepository
+                .findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(invoiceNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with invoice: " + invoiceNumber));
 
         if (request.getStatus() != RequestStatus.APPROVED) {
             throw new IllegalStateException("Refund request must be APPROVED to process refund.");
@@ -354,15 +329,12 @@ public class ReturnProcessorService {
                 continue;
             }
 
-            // 1. Stock increase
             product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             productRepository.save(product);
 
-            // 2. Invoice quantity decrease
             invoiceItem.setQuantity(invoiceItem.getQuantity() - item.getQuantity());
             invoiceItemRepository.save(invoiceItem);
 
-            // 3. Create return record
             ReturnRecord record = new ReturnRecord();
             record.setInvoiceNumber(invoice.getInvoiceNumber());
             record.setInvoiceItemId(invoiceItem.getId());
@@ -371,17 +343,16 @@ public class ReturnProcessorService {
             record.setReason(item.getReason());
             record.setRefundMethod("CASH");
             record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
 
             returnRecordRepository.save(record);
 
-            totalRefundAmount += item.getQuantity() * item.getUnitPrice();
+            totalRefundAmount += item.getRefundAmount();
         }
 
-        // 4. Adjust invoice total
         invoice.setTotalAmount(invoice.getTotalAmount() - totalRefundAmount);
         invoiceRepository.save(invoice);
 
-        // 5. Adjust loyalty points
         double currentPoints = invoice.getLoyaltyPoints() != null ? invoice.getLoyaltyPoints() : 0.0;
         double newPoints = Math.max(0, currentPoints - totalRefundAmount / 10);
         loyaltyService.updateLoyaltyPoints(invoice.getCustomerId(), newPoints);
@@ -392,9 +363,10 @@ public class ReturnProcessorService {
     }
 
     @Transactional
-    public void processCardRefund(Long requestId, CardRefundRecord cardInfo) {
-        RequestReturn request = requestReturnRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
+    public void finalizeCardRefundByInvoiceNumber(String invoiceNumber, CardRefundRequestDTO dto) {
+        RequestReturn request = requestReturnRepository
+                .findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(invoiceNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with invoice: " + invoiceNumber));
 
         if (request.getStatus() != RequestStatus.APPROVED) {
             throw new IllegalStateException("Refund request must be APPROVED to process refund.");
@@ -412,15 +384,12 @@ public class ReturnProcessorService {
                 continue;
             }
 
-            // 1. Stock increase
             product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             productRepository.save(product);
 
-            // 2. Invoice quantity decrease
             invoiceItem.setQuantity(invoiceItem.getQuantity() - item.getQuantity());
             invoiceItemRepository.save(invoiceItem);
 
-            // 3. Create return record
             ReturnRecord record = new ReturnRecord();
             record.setInvoiceNumber(invoice.getInvoiceNumber());
             record.setInvoiceItemId(invoiceItem.getId());
@@ -429,25 +398,27 @@ public class ReturnProcessorService {
             record.setReason(item.getReason());
             record.setRefundMethod("CARD");
             record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
 
             returnRecordRepository.save(record);
 
-            totalRefundAmount += item.getQuantity() * item.getUnitPrice();
+            totalRefundAmount += item.getRefundAmount();
         }
 
-        // 4. Save card refund record
-        cardInfo.setInvoiceNumber(invoice.getInvoiceNumber());
-        cardInfo.setAmount(totalRefundAmount);
-        cardInfo.setStatus("COMPLETED");
-        cardInfo.setCreatedAt(LocalDateTime.now());
+        CardRefundRecord cardRecord = new CardRefundRecord();
+        cardRecord.setInvoiceNumber(invoice.getInvoiceNumber());
+        cardRecord.setAmount(totalRefundAmount);
+        cardRecord.setAccountHolderName(dto.getAccountHolderName());
+        cardRecord.setBankName(dto.getBankName());
+        cardRecord.setAccountNumber(dto.getAccountNumber());
+        cardRecord.setCreatedAt(LocalDateTime.now());
+        cardRecord.setStatus("COMPLETED");
 
-        cardRefundRecordRepository.save(cardInfo);
+        cardRefundRecordRepository.save(cardRecord);
 
-        // 5. Adjust invoice total
         invoice.setTotalAmount(invoice.getTotalAmount() - totalRefundAmount);
         invoiceRepository.save(invoice);
 
-        // 6. Adjust loyalty points
         double currentPoints = invoice.getLoyaltyPoints() != null ? invoice.getLoyaltyPoints() : 0.0;
         double newPoints = Math.max(0, currentPoints - totalRefundAmount / 10);
         loyaltyService.updateLoyaltyPoints(invoice.getCustomerId(), newPoints);
@@ -455,6 +426,206 @@ public class ReturnProcessorService {
         request.setStatus(RequestStatus.COMPLETED);
         request.setReviewedAt(LocalDateTime.now());
         requestReturnRepository.save(request);
+    }
+
+    public List<RefundRequestDetailsDTO> getRefundRequestsByInvoice(String invoiceNumber) {
+        List<RequestReturn> requests = requestReturnRepository.findAllByInvoice_InvoiceNumberOrderByCreatedAtDesc(invoiceNumber);
+
+        List<RefundRequestDetailsDTO> dtos = new ArrayList<>();
+        for (RequestReturn request : requests) {
+            RefundRequestDetailsDTO dto = new RefundRequestDetailsDTO();
+            dto.setRequestId(request.getId());
+            dto.setInvoiceNumber(request.getInvoice().getInvoiceNumber());
+            dto.setRefundMethod(request.getRefundMethod());
+            dto.setTotalRefundAmount(request.getTotalRefundAmount());
+            dto.setCreatedAt(request.getCreatedAt());
+            dto.setReviewedAt(request.getReviewedAt());
+            dto.setStatus(request.getStatus());
+
+            if (request.getCustomer() != null) {
+                dto.setCustomerId(request.getCustomer().getId());
+                dto.setCustomerName((String) request.getCustomer().getName());
+            }
+
+            List<ReturnedItemDTO> itemDTOs = new ArrayList<>();
+            for (ReturnItem item : request.getItems()) {
+                ReturnedItemDTO itemDTO = new ReturnedItemDTO();
+                itemDTO.setItemId(item.getProduct().getId());
+                itemDTO.setProductName(item.getProduct().getName());
+                itemDTO.setQuantity(item.getQuantity());
+                itemDTO.setUnitPrice(item.getRefundAmount() / item.getQuantity()); // approximate
+                itemDTO.setRefundAmount(item.getRefundAmount());
+                itemDTO.setReason(item.getReason());
+                itemDTO.setPhotoPath(item.getPhotoPath());
+                itemDTOs.add(itemDTO);
+            }
+            dto.setItems(itemDTOs);
+
+            dtos.add(dto);
+        }
+
+        return dtos;
+    }
+    @Transactional
+    public void cancelRefundRequest(Long requestId) {
+        RequestReturn request = requestReturnRepository.findById(requestId)
+                .orElseThrow(() -> new EntityNotFoundException("Refund request not found"));
+
+        if (request.getStatus() == RequestStatus.COMPLETED || request.getStatus() == RequestStatus.REJECTED) {
+            throw new IllegalStateException("Cannot cancel a request that is already completed or rejected.");
+        }
+
+        request.setStatus(RequestStatus.valueOf("CANCELLED"));
+        request.setReviewedAt(LocalDateTime.now());
+        requestReturnRepository.save(request);
+    }
+
+    @Transactional
+    public void processCashRefund(Long requestId) {
+        RequestReturn request = requestReturnRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
+
+        if (request.getStatus() != RequestStatus.APPROVED) {
+            throw new IllegalStateException("Refund request must be APPROVED to process cash refund.");
+        }
+
+        Invoice invoice = request.getInvoice();
+        double totalRefundAmount = 0.0;
+
+        for (ReturnItem item : request.getItems()) {
+            Product product = item.getProduct();
+            InvoiceItem invoiceItem = item.getInvoiceItem();
+
+            if (product == null || invoiceItem == null) {
+                log.error("Missing product or invoiceItem for ReturnItem id: {}", item.getId());
+                continue;
+            }
+
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+            productRepository.save(product);
+
+            invoiceItem.setQuantity(invoiceItem.getQuantity() - item.getQuantity());
+            invoiceItemRepository.save(invoiceItem);
+
+            ReturnRecord record = new ReturnRecord();
+            record.setInvoiceNumber(invoice.getInvoiceNumber());
+            record.setInvoiceItemId(invoiceItem.getId());
+            record.setProductId(product.getId());
+            record.setQuantityReturned(item.getQuantity());
+            record.setReason(item.getReason());
+            record.setRefundMethod("CASH");
+            record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
+
+            returnRecordRepository.save(record);
+
+            totalRefundAmount += item.getRefundAmount();
+        }
+
+        invoice.setTotalAmount(invoice.getTotalAmount() - totalRefundAmount);
+        invoiceRepository.save(invoice);
+
+        double currentPoints = invoice.getLoyaltyPoints() != null ? invoice.getLoyaltyPoints() : 0.0;
+        double newPoints = Math.max(0, currentPoints - totalRefundAmount / 10);
+        loyaltyService.updateLoyaltyPoints(invoice.getCustomerId(), newPoints);
+
+        request.setStatus(RequestStatus.COMPLETED);
+        request.setReviewedAt(LocalDateTime.now());
+        requestReturnRepository.save(request);
+    }
+
+    @Transactional
+    public void finalizeCardRefund(Long requestId, CardRefundRequestDTO dto) {
+        RequestReturn request = requestReturnRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
+
+        if (request.getStatus() != RequestStatus.APPROVED) {
+            throw new IllegalStateException("Refund request must be APPROVED to process card refund.");
+        }
+
+        Invoice invoice = request.getInvoice();
+        double totalRefundAmount = 0.0;
+
+        for (ReturnItem item : request.getItems()) {
+            Product product = item.getProduct();
+            InvoiceItem invoiceItem = item.getInvoiceItem();
+
+            if (product == null || invoiceItem == null) {
+                log.error("Missing product or invoiceItem for ReturnItem id: {}", item.getId());
+                continue;
+            }
+
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+            productRepository.save(product);
+
+            invoiceItem.setQuantity(invoiceItem.getQuantity() - item.getQuantity());
+            invoiceItemRepository.save(invoiceItem);
+
+            ReturnRecord record = new ReturnRecord();
+            record.setInvoiceNumber(invoice.getInvoiceNumber());
+            record.setInvoiceItemId(invoiceItem.getId());
+            record.setProductId(product.getId());
+            record.setQuantityReturned(item.getQuantity());
+            record.setReason(item.getReason());
+            record.setRefundMethod("CARD");
+            record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
+
+            returnRecordRepository.save(record);
+
+            totalRefundAmount += item.getRefundAmount();
+        }
+
+        CardRefundRecord cardRecord = new CardRefundRecord();
+        cardRecord.setInvoiceNumber(invoice.getInvoiceNumber());
+        cardRecord.setAmount(totalRefundAmount);
+        cardRecord.setAccountHolderName(dto.getAccountHolderName());
+        cardRecord.setBankName(dto.getBankName());
+        cardRecord.setAccountNumber(dto.getAccountNumber());
+        cardRecord.setCreatedAt(LocalDateTime.now());
+        cardRecord.setStatus("COMPLETED");
+
+        cardRefundRecordRepository.save(cardRecord);
+
+        invoice.setTotalAmount(invoice.getTotalAmount() - totalRefundAmount);
+        invoiceRepository.save(invoice);
+
+        double currentPoints = invoice.getLoyaltyPoints() != null ? invoice.getLoyaltyPoints() : 0.0;
+        double newPoints = Math.max(0, currentPoints - totalRefundAmount / 10);
+        loyaltyService.updateLoyaltyPoints(invoice.getCustomerId(), newPoints);
+
+        request.setStatus(RequestStatus.COMPLETED);
+        request.setReviewedAt(LocalDateTime.now());
+        requestReturnRepository.save(request);
+    }
+
+    @Transactional
+    public void processExchange(Long requestId) {
+        RequestReturn requestReturn = requestReturnRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Refund request not found with ID: " + requestId));
+
+        if (requestReturn.getStatus() != RequestStatus.APPROVED) {
+            throw new IllegalStateException("Refund request must be APPROVED to process exchange.");
+        }
+
+        for (ReturnItem item : requestReturn.getItems()) {
+            ReturnRecord record = new ReturnRecord();
+            record.setInvoiceNumber(requestReturn.getInvoice().getInvoiceNumber());
+            record.setInvoiceItemId(item.getInvoiceItem().getId());
+            record.setProductId(item.getProduct().getId());
+            record.setQuantityReturned(item.getQuantity());
+            record.setReason(item.getReason());
+            record.setRefundMethod("EXCHANGE");
+            record.setReturnedAt(LocalDateTime.now());
+            record.setRefundAmount(item.getRefundAmount());
+            record.setReplacementProduct(item.getProduct());
+
+            returnRecordRepository.save(record);
+        }
+
+        requestReturn.setStatus(RequestStatus.COMPLETED);
+        requestReturn.setReviewedAt(LocalDateTime.now());
+        requestReturnRepository.save(requestReturn);
     }
 
 

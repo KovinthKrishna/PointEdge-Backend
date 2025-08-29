@@ -1,6 +1,7 @@
 package com.eternalcoders.pointedge.controller;
 
 import com.eternalcoders.pointedge.dto.EmployeeDTO;
+import com.eternalcoders.pointedge.dto.EmployeeInfoDTO;
 import com.eternalcoders.pointedge.entity.Employee;
 import com.eternalcoders.pointedge.exception.ResourceNotFoundException;
 import com.eternalcoders.pointedge.repository.EmployeeRepository;
@@ -11,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -163,5 +166,27 @@ public class EmployeeController {
         employee.setStatus(dto.getStatus());
         employee.setLocation(dto.getLocation());
         return employee;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<EmployeeInfoDTO> getLoggedInEmployee(@AuthenticationPrincipal Object principal) {
+        if (principal instanceof String email) {
+            Optional<Employee> optionalEmployee = employeeService.findByEmail(email);
+
+            if (optionalEmployee.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            Employee employee = optionalEmployee.get();
+            EmployeeInfoDTO dto = new EmployeeInfoDTO(
+                    employee.getId(),
+                    employee.getName(),
+                    employee.getRole()
+            );
+
+            return ResponseEntity.ok(dto);
+        }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

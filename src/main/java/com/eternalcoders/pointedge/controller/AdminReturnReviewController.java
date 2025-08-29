@@ -68,8 +68,8 @@ public class AdminReturnReviewController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/approve-request")
-    public ResponseEntity<?> approveRequest(@RequestParam Long requestId) {
-        returnProcessorService.approveRefundRequest(requestId);
+    public ResponseEntity<?> approveRequest(@RequestParam Long requestId,@RequestParam Long adminId) {
+        returnProcessorService.approveRefundRequest(requestId,adminId);
         return ResponseEntity.ok("Approved");
     }
 
@@ -82,6 +82,7 @@ public class AdminReturnReviewController {
 
     @PostMapping("/submit-refund-request")
     public ResponseEntity<String> submitRefundRequest(
+            @RequestParam Long employeeId,
             @RequestPart("data") String jsonData,
             @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) throws IOException {
@@ -97,7 +98,7 @@ public class AdminReturnReviewController {
             }
         }
 
-        returnProcessorService.initiateRefundRequest(items, wrapper.getInvoiceNumber(), wrapper.getRefundMethod());
+        returnProcessorService.initiateRefundRequest(items, wrapper.getInvoiceNumber(), wrapper.getRefundMethod(), employeeId);
         return ResponseEntity.ok("Refund request submitted for admin review.");
     }
 
@@ -147,4 +148,5 @@ public class AdminReturnReviewController {
         public void setRefundMethod(String refundMethod) { this.refundMethod = refundMethod; }
         public void setItems(List<ReturnedItemDTO> items) { this.items = items; }
     }
+
 }

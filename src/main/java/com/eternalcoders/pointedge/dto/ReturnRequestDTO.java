@@ -11,4 +11,5 @@ public class ReturnRequestDTO {
     private String refundMethod;
     private double totalAmount;
     private Long replacementProductId;
+    private long createdById;
 }

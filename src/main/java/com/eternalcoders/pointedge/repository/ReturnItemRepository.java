@@ -9,5 +9,5 @@ import java.util.List;
 
 @Repository
 public interface ReturnItemRepository extends JpaRepository<ReturnItem, Long> {
-
+    List<ReturnItem> findByRequestReturn(RequestReturn request);
 }

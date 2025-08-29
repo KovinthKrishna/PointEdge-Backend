@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,7 +38,8 @@ public class ReturnService {
         returnProcessorService.processReturn(
                 returnRequest.getItems(),
                 returnRequest.getInvoiceNumber(),
-                returnRequest.getRefundMethod()
+                returnRequest.getRefundMethod(),
+                returnRequest.getCreatedById()
         );
         logger.info("Return processed successfully.");
     }
@@ -48,15 +50,18 @@ public class ReturnService {
         String invoiceNumber = returnRequest.getInvoiceNumber();
 
         if ("Exchange".equalsIgnoreCase(refundMethod)) {
-            returnProcessorService.processExchange(
+            returnProcessorService.initiateRefundRequest(
                     returnRequest.getItems(),
-                    invoiceNumber
+                    invoiceNumber,
+                    "Exchange",
+                    returnRequest.getCreatedById()
             );
         } else {
             returnProcessorService.processReturn(
                     returnRequest.getItems(),
                     invoiceNumber,
-                    refundMethod
+                    refundMethod,
+                    returnRequest.getCreatedById()
             );
         }
     }
@@ -90,9 +95,11 @@ public class ReturnService {
     }
 
     public void handleExchange(ExchangeRequestDTO exchangeRequest) {
-        returnProcessorService.processExchange(
+        returnProcessorService.initiateRefundRequest(
                 exchangeRequest.getReturnedItems(),
-                exchangeRequest.getInvoiceNumber()
+                exchangeRequest.getInvoiceNumber(),
+                "Exchange",
+                exchangeRequest.getCreatedById()
         );
     }
 
@@ -117,5 +124,22 @@ public class ReturnService {
         request.setStatus(RequestStatus.COMPLETED);
         requestReturnRepository.save(request);
     }
+
+    public void deleteRequestById(Long requestId) {
+        Optional<RequestReturn> requestOpt = requestReturnRepository.findById(requestId);
+        if (requestOpt.isPresent()) {
+            RequestReturn request = requestOpt.get();
+
+            // First delete associated ReturnItems
+            List<ReturnItem> items = returnItemRepository.findByRequestReturn(request);
+            returnItemRepository.deleteAll(items);
+
+            // Then delete the request
+            requestReturnRepository.delete(request);
+        } else {
+            throw new EntityNotFoundException("Refund request not found with ID: " + requestId);
+        }
+    }
+
 
 }
