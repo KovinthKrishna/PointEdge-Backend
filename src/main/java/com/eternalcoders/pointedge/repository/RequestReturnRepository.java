@@ -13,6 +13,7 @@ public interface RequestReturnRepository extends JpaRepository<RequestReturn, Lo
     List<RequestReturn> findByStatus(RequestStatus status);
     List<RequestReturn> findByInvoice_InvoiceNumber(String invoiceNumber);
     Optional<RequestReturn> findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(String invoiceNumber);
-
+    List<RequestReturn> findAllByInvoice_InvoiceNumberOrderByCreatedAtDesc(String invoiceNumber);
+    List<RequestReturn> findByCreatedBy_Id(Long employeeId);
 }
 

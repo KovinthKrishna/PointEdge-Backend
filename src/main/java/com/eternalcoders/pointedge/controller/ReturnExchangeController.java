@@ -1,15 +1,27 @@
 package com.eternalcoders.pointedge.controller;
 
 import com.eternalcoders.pointedge.dto.*;
+import com.eternalcoders.pointedge.entity.CardRefundRecord;
+import com.eternalcoders.pointedge.entity.RequestReturn;
+import com.eternalcoders.pointedge.mapper.RequestMapper;
+import com.eternalcoders.pointedge.repository.RequestReturnRepository;
+import com.eternalcoders.pointedge.service.ReturnProcessorService;
 import com.eternalcoders.pointedge.service.ReturnService;
 import com.eternalcoders.pointedge.exception.EntityNotFoundException;
 
 import jakarta.validation.Valid;
+import jakarta.validation.ValidatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/return-exchange")
@@ -17,9 +29,17 @@ public class ReturnExchangeController {
 
     private final ReturnService returnService;
     private static final Logger logger = LoggerFactory.getLogger(ReturnExchangeController.class);
+    private final ValidatorFactory validatorFactory;
+    private final ReturnProcessorService returnProcessorService;
+    @Autowired
+    private RequestReturnRepository requestReturnRepository;
+    @Autowired
+    private RequestMapper requestMapper;
 
-    public ReturnExchangeController(ReturnService returnService) {
+    public ReturnExchangeController(ReturnService returnService, ValidatorFactory validatorFactory, ReturnProcessorService returnProcessorService) {
         this.returnService = returnService;
+        this.validatorFactory = validatorFactory;
+        this.returnProcessorService = returnProcessorService;
     }
 
     // ----------------- Fetch Invoice -----------------
@@ -35,57 +55,6 @@ public class ReturnExchangeController {
         }
     }
 
-    // ----------------- Process Return -----------------
-    @PostMapping("/return")
-    public ResponseEntity<String> processReturn(@RequestBody ReturnRequestDTO returnRequest) {
-        try {
-            logger.info("Processing return request for invoice: {}", returnRequest.getInvoiceNumber());
-            returnService.handleReturn(returnRequest);
-            return ResponseEntity.ok("Return processed successfully");
-        } catch (Exception e) {
-            logger.error("Error processing return for invoice: {}", returnRequest.getInvoiceNumber(), e);
-            return ResponseEntity.status(500).body("Error processing return");
-        }
-    }
-
-    // ----------------- Process Exchange -----------------
-    @PostMapping("/exchange")
-    public ResponseEntity<String> processExchange(@RequestBody ExchangeRequestDTO exchangeRequest) {
-        try {
-            logger.info("Processing exchange for invoice: {}", exchangeRequest.getInvoiceNumber());
-            returnService.handleExchange(exchangeRequest);
-            return ResponseEntity.ok("Exchange processed successfully");
-        } catch (Exception e) {
-            logger.error("Error processing exchange for invoice: {}", exchangeRequest.getInvoiceNumber(), e);
-            return ResponseEntity.status(500).body("Error processing exchange");
-        }
-    }
-
-    // ----------------- Process Refund (Optional) -----------------
-    @PostMapping("/refund")
-    public ResponseEntity<String> processRefund(@RequestBody ReturnRequestDTO returnRequest) {
-        try {
-            logger.info("Processing refund for invoice: {}", returnRequest.getInvoiceNumber());
-            returnService.handleRefund(returnRequest);
-            return ResponseEntity.ok("Refund processed successfully (stub)");
-        } catch (Exception e) {
-            logger.error("Error processing refund for invoice: {}", returnRequest.getInvoiceNumber(), e);
-            return ResponseEntity.status(500).body("Error processing refund");
-        }
-    }
-
-    @PostMapping("/card-refund")
-    public ResponseEntity<String> processCardRefund(@RequestBody @Valid CardRefundRequestDTO dto) {
-        logger.info("Processing card refund for invoice: {}", dto.getInvoiceNumber());
-
-        boolean success = returnService.processCardRefund(dto);
-
-        if (success) {
-            return ResponseEntity.ok("Card refund simulated successfully");
-        } else {
-            return ResponseEntity.status(500).body("Card refund simulation failed");
-        }
-    }
 
     // ----------------- Optional: View Exchange or Return History -----------------
     @GetMapping("/history/{invoiceNumber}")
@@ -101,14 +70,99 @@ public class ReturnExchangeController {
     }
 
     @PostMapping("/process-approved/{requestId}")
-    public ResponseEntity<?> processApproved(@PathVariable Long requestId) {
+    public ResponseEntity<?> finalizeApprovedRefund(@PathVariable Long requestId) {
         try {
-            logger.info("Finalizing refund for approved requestId: {}", requestId);
+            logger.info("Processing approved refund for request ID {}", requestId);
             returnService.finalizeApprovedRefund(requestId);
-            return ResponseEntity.ok("Refund finalized successfully");
+            return ResponseEntity.ok("Refund finalized");
         } catch (Exception e) {
-            logger.error("Error finalizing refund for requestId: {}", requestId, e);
-            return ResponseEntity.status(500).body("Refund finalization failed");
+            logger.error("Refund finalization failed for request ID {}: {}", requestId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Refund finalization failed");
         }
     }
+
+    @GetMapping("/refund-requests/invoice/{invoiceNumber}/details")
+    public ResponseEntity<List<RefundRequestDetailsDTO>> getDetailedRequestsByInvoice(@PathVariable String invoiceNumber) {
+        List<RefundRequestDetailsDTO> dtos = returnProcessorService.getRefundRequestsByInvoice(invoiceNumber);
+        return ResponseEntity.ok(dtos);
+    }
+
+
+    @GetMapping("/salesperson/{salespersonId}/refund-requests")
+    public ResponseEntity<List<RefundRequestDetailsDTO>> getRefundRequestsForSalesperson(
+            @PathVariable Long salespersonId) {
+
+        List<RequestReturn> requests = requestReturnRepository.findByCreatedBy_Id(salespersonId);
+        List<RefundRequestDetailsDTO> dtos = requests.stream()
+                .map(requestMapper::toRefundRequestDetailsDTO)
+                .toList();
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    @GetMapping("/refund-requests/{requestId}")
+    public ResponseEntity<RefundRequestDetailsDTO> getRefundRequestById(
+            @PathVariable Long requestId) {
+
+        RequestReturn request = requestReturnRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Refund request not found"));
+
+        RefundRequestDetailsDTO dto = requestMapper.toRefundRequestDetailsDTO(request);
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/cancel-request/{requestId}")
+    public ResponseEntity<?> cancelRefundRequest(@PathVariable Long requestId) {
+        try {
+            returnProcessorService.cancelRefundRequest(requestId);
+            return ResponseEntity.ok("Refund request cancelled successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+    }
+
+    @DeleteMapping("/return-exchange/delete-request/{requestId}")
+    public ResponseEntity<?> deleteRequest(@PathVariable Long requestId) {
+        try {
+            returnService.deleteRequestById(requestId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to delete request: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/finalize-exchange/{requestId}")
+    public ResponseEntity<?> finalizeExchange(@PathVariable Long requestId) {
+        try {
+            returnProcessorService.processExchange(requestId);
+            return ResponseEntity.ok("Exchange finalized successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Exchange finalization failed.");
+        }
+    }
+
+    @PostMapping("/finalize-cash/{requestId}")
+    public ResponseEntity<?> finalizeCashRefund(@PathVariable Long requestId) {
+        try {
+            returnProcessorService.processCashRefund(requestId);
+            return ResponseEntity.ok("Cash refund finalized successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Cash refund finalization failed.");
+        }
+    }
+
+    @PostMapping("/finalize-card/{requestId}")
+    public ResponseEntity<?> finalizeCardRefund(
+            @PathVariable Long requestId,
+            @RequestBody CardRefundRequestDTO dto) {
+        try {
+            returnProcessorService.simulateCardRefund(dto);
+            return ResponseEntity.ok("Card refund processed successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Card refund failed.");
+        }
+    }
+
 }

@@ -31,6 +31,10 @@ public class ReturnRecord {
     private LocalDateTime returnedAt;
 
     @Setter
+    @Column(nullable = false)
+    private double refundAmount;
+
+    @Setter
     @ManyToOne
     @JoinColumn(name = "replacement_product_id")
     private Product replacementProduct;

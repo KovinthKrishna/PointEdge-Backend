@@ -16,4 +16,6 @@ public class ExchangeRequestDTO {
     @NotNull
     private List<ReturnedItemDTO> returnedItems;
 
+    private long createdById;
+
 }

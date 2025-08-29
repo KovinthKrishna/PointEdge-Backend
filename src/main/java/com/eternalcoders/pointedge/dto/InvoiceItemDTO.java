@@ -6,7 +6,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class InvoiceItemDTO {
-    private Long itemId;  // This should match what frontend expects
+    private Long itemId;        // This is InvoiceItem.id
+    private Long productId;     // Add this - Product.id
     private String productName;
     private Double price;
     private Integer quantity;

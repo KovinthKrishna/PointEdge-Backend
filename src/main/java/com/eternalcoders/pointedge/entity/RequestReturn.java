@@ -29,6 +29,14 @@ public class RequestReturn {
     private RequestStatus status;
 
     @ManyToOne
+    @JoinColumn(name = "created_by_id")
+    private Employee createdBy;
+
+    @ManyToOne
+    @JoinColumn(name = "reviewed_by_id")
+    private Employee reviewedBy;
+
+    @ManyToOne
     @JoinColumn(name = "invoice_id", referencedColumnName = "invoiceNumber")  // Fix here
     private Invoice invoice;
 
