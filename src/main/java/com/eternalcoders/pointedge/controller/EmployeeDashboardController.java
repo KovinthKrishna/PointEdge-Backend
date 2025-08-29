@@ -9,7 +9,6 @@ import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.service.AttendanceService;
 import com.eternalcoders.pointedge.service.EmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,27 +25,24 @@ public class EmployeeDashboardController {
 
     private final EmployeeService employeeService;
     private final AttendanceService attendanceService;
-    private final OrderRepository orderRepository; // ✅ Add this
+    private final OrderRepository orderRepository; 
 
-    // Constants for productivity calculation
-    private static final int STANDARD_MONTHLY_WORKING_HOURS = 160; // 160 hours per month
-    private static final int MAX_OT_HOURS_PER_EMPLOYEE = 20; // Maximum 20 OT hours per employee per month
+    private static final int STANDARD_MONTHLY_WORKING_HOURS = 160;
+    private static final int MAX_OT_HOURS_PER_EMPLOYEE = 20;
 
     @Autowired
     public EmployeeDashboardController(EmployeeService employeeService, AttendanceService attendanceService, OrderRepository orderRepository) {
         this.employeeService = employeeService;
         this.attendanceService = attendanceService;
-        this.orderRepository = orderRepository; // ✅ Add this
+        this.orderRepository = orderRepository;
     }
 
-    /**
-     * Get all dashboard data in a single API call
-     */
+    //Get all dashboard data in a single API call
     @GetMapping("/employee-stats")
     public ResponseEntity<EmployeeDashboardDTO> getEmployeeDashboard() {
         EmployeeDashboardDTO dashboard = new EmployeeDashboardDTO();
 
-        // ✅ Get total orders and sales from orders table
+        // Orders and sales
         long totalOrders = orderRepository.count();
         double totalSales = orderRepository.findAll()
             .stream()
@@ -55,20 +51,33 @@ public class EmployeeDashboardController {
         dashboard.setTotalOrders(totalOrders);
         dashboard.setTotalSales(totalSales);
 
-        // Get total employee count
+        // Employees
         List<Employee> employees = employeeService.getAllEmployees();
         dashboard.setTotalEmployees(employees.size());
 
-        // Get active vs leave employees - Updated to use correct enum values
-        long activeEmployees = employees.stream()
-                .filter(e -> e.getStatus() == Employee.EmployeeStatus.Active)
-                .count();
-        long onLeaveEmployees = employees.stream()
-                .filter(e -> e.getStatus() == Employee.EmployeeStatus.Leave)
-                .count();
+        // Donut chart counts
+        long activeCount = employees.stream()
+            .filter(e -> e.getStatus() != null && e.getStatus().name().equalsIgnoreCase("Active"))
+            .count();
 
-        dashboard.setActiveEmployees((int) activeEmployees);
-        dashboard.setOnLeaveEmployees((int) onLeaveEmployees);
+        long inactiveCount = employees.stream()
+            .filter(e -> e.getStatus() != null && e.getStatus().name().equalsIgnoreCase("Inactive"))
+            .count();
+
+        long suspendCount = employees.size() - activeCount - inactiveCount;
+
+        dashboard.setActiveCount((int) activeCount);
+        dashboard.setInactiveCount((int) inactiveCount);
+        dashboard.setSuspendCount((int) suspendCount);
+
+        dashboard.setActivePercentage(employees.size() > 0 ? (int) Math.round(activeCount * 100.0 / employees.size()) : 0);
+        dashboard.setInactivePercentage(employees.size() > 0 ? (int) Math.round(inactiveCount * 100.0 / employees.size()) : 0);
+        dashboard.setSuspendPercentage(employees.size() > 0 ? (int) Math.round(suspendCount * 100.0 / employees.size()) : 0);
+
+        // Overview stats (optional, for completeness)
+        dashboard.setActiveEmployees((int) activeCount);
+        dashboard.setInactiveEmployees((int) inactiveCount);
+        dashboard.setSuspendEmployees((int) suspendCount);
 
         // Calculate total hours worked this month
         LocalDate firstDayOfMonth = LocalDate.now().withDayOfMonth(1);
@@ -99,7 +108,6 @@ public class EmployeeDashboardController {
         List<Attendance> previousMonthAttendances =
                 attendanceService.findByDateBetween(firstDayOfPreviousMonth, lastDayOfPreviousMonth);
 
-        // Calculate employee change percentage
         int previousMonthEmployeeCount = (int) previousMonthAttendances.stream()
                 .map(a -> a.getEmployee().getId())
                 .distinct()
@@ -110,7 +118,6 @@ public class EmployeeDashboardController {
 
         dashboard.setEmployeeChangePercent(employeeChangePercent);
 
-        // Calculate hours worked change percentage
         long prevMonthMinutesWorked = 0;
         for (Attendance attendance : previousMonthAttendances) {
             if (attendance.getTotalHours() != null && !attendance.getTotalHours().isEmpty()) {
@@ -127,29 +134,13 @@ public class EmployeeDashboardController {
 
         dashboard.setHoursChangePercent(hoursChangePercent);
 
-        // Set attendance report data (reuse the same active/leave counts)
-        dashboard.setActiveCount((int) activeEmployees);
-        dashboard.setLeaveCount((int) onLeaveEmployees);
-        dashboard.setActivePercentage(employees.size() > 0 ?
-                (int) (activeEmployees * 100.0 / employees.size()) : 0);
-        dashboard.setLeavePercentage(employees.size() > 0 ?
-                (int) (onLeaveEmployees * 100.0 / employees.size()) : 0);
-
-        // Calculate productivity data
+        // Productivity and weekly attendance
         dashboard.setProductivityData(calculateMonthlyProductivity());
-
-        // Calculate weekly attendance
         dashboard.setWeeklyAttendance(calculateWeeklyAttendance());
 
         return ResponseEntity.ok(dashboard);
     }
 
-    /**
-     * Helper method to calculate monthly productivity using the formula:
-     * Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
-     * Standard Monthly Working Hours = 160h
-     * Maximum OT Hours per Employee = 20h per month
-     */
     private List<MonthlyProductivity> calculateMonthlyProductivity() {
         List<MonthlyProductivity> productivityData = new ArrayList<>();
         int year = LocalDate.now().getYear();
@@ -164,7 +155,7 @@ public class EmployeeDashboardController {
                 MonthlyProductivity monthData = new MonthlyProductivity();
                 monthData.setMonth(firstDayOfMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
                 monthData.setPrimary(0); // Productivity percentage
-                monthData.setSecondary(0); // OT hours
+                monthData.setSecondary(0); // OT hours (not used anymore)
                 productivityData.add(monthData);
                 continue;
             }
@@ -191,12 +182,9 @@ public class EmployeeDashboardController {
                 continue;
             }
 
-            // Calculate total hours worked and OT hours
+            // Calculate total hours worked
             double totalHoursWorked = 0;
-            Map<Long, Double> employeeOTHours = new HashMap<>();
-
             for (Attendance attendance : monthAttendances) {
-                // Calculate total hours
                 if (attendance.getTotalHours() != null && !attendance.getTotalHours().isEmpty()) {
                     String[] parts = attendance.getTotalHours().split(":");
                     if (parts.length >= 2) {
@@ -204,25 +192,8 @@ public class EmployeeDashboardController {
                         totalHoursWorked += Integer.parseInt(parts[1]) / 60.0;
                     }
                 }
-
-                // Calculate OT hours per employee (with 20h limit)
-                if (attendance.getOtHours() != null && !attendance.getOtHours().isEmpty()) {
-                    String[] parts = attendance.getOtHours().split(":");
-                    if (parts.length >= 2) {
-                        double otHours = Integer.parseInt(parts[0]) + Integer.parseInt(parts[1]) / 60.0;
-                        Long employeeId = attendance.getEmployee().getId();
-
-                        employeeOTHours.merge(employeeId, otHours, Double::sum);
-                    }
-                }
             }
 
-            // Apply 20-hour OT limit per employee and calculate total valid OT hours
-            double totalValidOTHours = employeeOTHours.values().stream()
-                    .mapToDouble(hours -> Math.min(hours, MAX_OT_HOURS_PER_EMPLOYEE))
-                    .sum();
-
-            // Calculate productivity using the formula:
             // Productivity = Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)
             double standardTotalHours = numberOfEmployees * STANDARD_MONTHLY_WORKING_HOURS;
             double productivityPercentage = standardTotalHours > 0 ?
@@ -234,7 +205,7 @@ public class EmployeeDashboardController {
             MonthlyProductivity monthData = new MonthlyProductivity();
             monthData.setMonth(firstDayOfMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
             monthData.setPrimary((int) Math.round(productivityPercentage)); // Productivity percentage
-            monthData.setSecondary((int) Math.round(totalValidOTHours)); // Total valid OT hours
+            monthData.setSecondary(0); // OT hours/productivity removed
 
             productivityData.add(monthData);
         }
@@ -242,9 +213,7 @@ public class EmployeeDashboardController {
         return productivityData;
     }
 
-    /**
-     * Helper method to calculate weekly attendance
-     */
+    // Helper method to calculate weekly attendance
     private List<DailyAttendance> calculateWeeklyAttendance() {
         List<DailyAttendance> weeklyAttendance = new ArrayList<>();
 
@@ -254,7 +223,6 @@ public class EmployeeDashboardController {
         // Get all employees to calculate percentage
         int totalEmployees = employeeService.getAllEmployees().size();
 
-        // For each day in the past week
         for (int i = 0; i < 7; i++) {
             LocalDate date = startDate.plusDays(i);
 
@@ -271,9 +239,8 @@ public class EmployeeDashboardController {
             int attendancePercentage = totalEmployees > 0 ?
                     (int) (attendedEmployees * 100.0 / totalEmployees) : 0;
 
-            // Calculate a height value based on percentage (scaled for UI display)
-            int height = (int) (attendancePercentage * 1.6); // Scale to match UI heights
-
+            // Calculate a height value based on percentage 
+            int height = (int) (attendancePercentage * 1.6); 
             DailyAttendance dayData = new DailyAttendance();
             dayData.setDate(date.toString());
             dayData.setDayOfWeek(date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH));
@@ -286,17 +253,12 @@ public class EmployeeDashboardController {
         return weeklyAttendance;
     }
 
-    /**
-     * Get productivity configuration
-     */
+    //Get productivity configuration
     @GetMapping("/productivity-config")
     public ResponseEntity<?> getProductivityConfig() {
         Map<String, Object> config = new HashMap<>();
         config.put("standardMonthlyWorkingHours", STANDARD_MONTHLY_WORKING_HOURS);
-        config.put("maxOTHoursPerEmployee", MAX_OT_HOURS_PER_EMPLOYEE);
         config.put("productivityFormula", "Total Hours Worked / (Number of Employees × Standard Monthly Working Hours)");
         return ResponseEntity.ok(config);
-
     }
-
 }

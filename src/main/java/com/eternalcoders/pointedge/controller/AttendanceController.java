@@ -42,13 +42,14 @@ public class AttendanceController {
         this.jwtUtil = jwtUtil;
     }
 
-    @GetMapping
-    public ResponseEntity<List<AttendanceDTO>> getAllAttendances() {
-        List<AttendanceDTO> attendances = attendanceService.getAllAttendances().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(attendances);
-    }
+   @GetMapping
+public ResponseEntity<List<AttendanceDTO>> getTodayAttendances() {
+    LocalDate today = LocalDate.now();
+    List<AttendanceDTO> attendances = attendanceService.findByDate(today).stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(attendances);
+}
 
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByEmployee(@PathVariable Long employeeId) {
@@ -379,7 +380,6 @@ public class AttendanceController {
         dto.setTotalHours(attendance.getTotalHours() != null ? attendance.getTotalHours() : "0:00:00");
         dto.setOtHours(attendance.getOtHours() != null ? attendance.getOtHours() : "0:00:00");
         dto.setDate(attendance.getDate());
-        // Set default break time - will be overridden by calculateBreakTimes method when needed
         dto.setBreakTime("00:00:00");
 
         return dto;

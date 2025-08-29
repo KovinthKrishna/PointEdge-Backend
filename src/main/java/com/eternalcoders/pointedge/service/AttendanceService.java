@@ -92,7 +92,7 @@ public class AttendanceService {
         return attendanceRepository.save(attendance);
     }
 
-    // Clock-out logic with improved validation
+    // Clock-out logic 
     public Attendance clockOut(Long employeeId, LocalTime time) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
@@ -136,7 +136,7 @@ public class AttendanceService {
 
         Duration duration;
         if (clockOut.isBefore(clockIn)) {
-            // Overnight shift (e.g. clockIn 22:00, clockOut 06:00)
+            // Overnight shift 
             Duration firstPart = Duration.between(clockIn, LocalTime.MAX);
             Duration secondPart = Duration.between(LocalTime.MIN, clockOut);
             duration = firstPart.plus(secondPart).plusSeconds(1); // Add one second for midnight edge case
@@ -161,7 +161,6 @@ public class AttendanceService {
         
         if (clockIn.isBefore(standardEnd) || clockIn.equals(standardEnd)) {
             // Employee clocked in before or at the standard end time
-            // OT = time between standard end time and clock out time (if clock out is after end time)
             if (!clockOut.isAfter(standardEnd)) {
                 return "0:00:00"; // No overtime if clock out is before or at end time
             }
@@ -203,7 +202,7 @@ public class AttendanceService {
             totalWorked = Duration.between(clockIn, clockOut);
         }
 
-        // Calculate overtime (hours worked beyond standard)
+        // Calculate overtime
         long standardHoursInMinutes = standardWorkHours * 60L;
         long totalWorkedMinutes = totalWorked.toMinutes();
         

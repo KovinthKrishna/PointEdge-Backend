@@ -1,9 +1,11 @@
 package com.eternalcoders.pointedge.service;
 
 import com.eternalcoders.pointedge.dto.OrderRequestDTO;
+import com.eternalcoders.pointedge.dto.OrderStatsDTO;
 import com.eternalcoders.pointedge.dto.ProductOrderQuantityDTO;
 import com.eternalcoders.pointedge.entity.Order;
 import com.eternalcoders.pointedge.entity.OrderItem;
+import com.eternalcoders.pointedge.exception.InsufficientStockException;
 import com.eternalcoders.pointedge.repository.OrderItemRepository;
 import com.eternalcoders.pointedge.repository.OrderRepository;
 import com.eternalcoders.pointedge.repository.ProductRepository;
@@ -15,7 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class OrderService {
@@ -23,12 +28,14 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final InvoiceService invoiceService;
+    private final NotificationService notificationService;
 
-    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository, InvoiceService invoiceService) {
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductRepository productRepository, InvoiceService invoiceService, NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
         this.invoiceService = invoiceService;
+        this.notificationService = notificationService;
     }
 
     public Order getOrderById(Long id) {
@@ -37,9 +44,20 @@ public class OrderService {
 
     @Transactional
     public Order addOrder(Order order) {
-        for (OrderItem orderItem : order.getOrderItems()) {
-            orderItem.setOrder(order);
-            productRepository.reduceStock(orderItem.getProduct().getId(), orderItem.getQuantity());
+        for (OrderItem item : order.getOrderItems()) {
+            int updated = productRepository.reduceStock(
+                    item.getProduct().getId(),
+                    item.getQuantity()
+            );
+            if (updated == 0) {
+                throw new InsufficientStockException(
+                        item.getProduct().getName()
+                                + " only has " + item.getProduct().getStockQuantity()
+                                + " items left, cannot fulfill quantity of "
+                                + item.getQuantity()
+                );
+            }
+            item.setOrder(order);
         }
         return orderRepository.save(order);
     }
@@ -51,57 +69,111 @@ public class OrderService {
             LocalDate endDate,
             String search,
             Pageable pageable) {
-        LocalDateTime startDateWithTime = null;
-        LocalDateTime endDateWithTime = null;
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
 
         if (startDate != null && endDate != null && !startDate.isAfter(endDate)) {
-            startDateWithTime = startDate.atStartOfDay();
-            endDateWithTime = endDate.atTime(LocalTime.MAX);
+            startDateTime = startDate.atStartOfDay();
+            endDateTime = endDate.atTime(LocalTime.MAX);
         }
 
         return orderItemRepository.getTotalOrdersForProducts(
                 brandId,
                 categoryId,
-                startDateWithTime,
-                endDateWithTime,
+                startDateTime,
+                endDateTime,
                 search,
                 pageable
         );
     }
 
     @Transactional
-    public Order createOrderWithInvoice(OrderRequestDTO dto) {
+    public Map<String, Object> createOrderWithInvoice(OrderRequestDTO dto) {
         var order = new Order();
-
         order.setCustomerName(dto.getCustomerName());
         order.setCustomerPhone(dto.getCustomerPhone());
         order.setLoyaltyPoints(dto.getLoyaltyPoints());
         order.setDiscountCode(dto.getDiscountCode());
-
         order.setAmount(dto.getAmount());
         order.setTotalDiscount(dto.getTotalDiscount());
         order.setTotal(dto.getTotal());
-
         order.setEmployeeId(dto.getEmployeeId());
         order.setCashierName(dto.getCashierName());
+        order.setCashAmount(dto.getCashAmount());
+        order.setCardAmount(dto.getCardAmount());
 
-        List<OrderItem> orderItems = dto.getItems().stream().map(itemDTO -> {
+        List<OrderItem> items = new ArrayList<>();
+        for (var itemDTO : dto.getItems()) {
             var product = productRepository.findById(itemDTO.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found with ID: " + itemDTO.getProductId()));
+                    .orElseThrow(() -> new RuntimeException(
+                            "Product not found with ID: " + itemDTO.getProductId()
+                    ));
 
-            var orderItem = new OrderItem();
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemDTO.getQuantity());
-            orderItem.setPricePerUnit(itemDTO.getPricePerUnit());
-            orderItem.setOrder(order);
-            productRepository.reduceStock(product.getId(), itemDTO.getQuantity());
-            return orderItem;
-        }).toList();
+            int updated = productRepository.reduceStock(
+                    product.getId(),
+                    itemDTO.getQuantity()
+            );
+            if (updated == 0) {
+                throw new InsufficientStockException(
+                        "Cannot order " + itemDTO.getQuantity()
+                                + " of product " + product.getName()
+                                + " (only " + product.getStockQuantity() + " left)"
+                );
+            }
 
-        order.setOrderItems(orderItems);
+            long newQty = product.getStockQuantity() - itemDTO.getQuantity();
+            if (newQty == 0) {
+                notificationService.createNotification(
+                        product,
+                        product.getName() + " is sold out."
+                );
+            } else if (newQty < product.getMinimumQuantity()) {
+                notificationService.createNotification(
+                        product,
+                        "There are only " + newQty
+                                + " items of " + product.getName() + " in stock."
+                );
+            }
+
+            var oi = new OrderItem();
+            oi.setProduct(product);
+            oi.setQuantity(itemDTO.getQuantity());
+            oi.setPricePerUnit(itemDTO.getPricePerUnit());
+            oi.setOrder(order);
+            items.add(oi);
+        }
+        order.setOrderItems(items);
+
         Order savedOrder = orderRepository.save(order);
-        invoiceService.createInvoiceFromOrder(savedOrder);
 
-        return savedOrder;
+        var savedInvoice = invoiceService.createInvoiceFromOrder(savedOrder);
+
+        Long totalOrderCount = orderRepository.countTotalOrdersByEmployee(savedOrder.getEmployeeId());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("orderId", savedOrder.getId());
+        response.put("invoiceNumber", savedInvoice.getInvoiceNumber());
+        response.put("totalOrdersByEmployee", totalOrderCount);
+
+        return response;
+    }
+
+    public OrderStatsDTO getOrderStats(
+            Long brandId,
+            Long categoryId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+
+        if (startDate != null && endDate != null && !startDate.isAfter(endDate)) {
+            startDateTime = startDate.atStartOfDay();
+            endDateTime = endDate.plusDays(1).atStartOfDay();
+        }
+
+        return orderRepository.findOrderStats(
+                brandId, categoryId, startDateTime, endDateTime
+        );
     }
 }

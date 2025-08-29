@@ -20,15 +20,15 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             "FROM OrderItem oi " +
             "WHERE (:brandId IS NULL OR oi.product.brand.id = :brandId) " +
             "AND (:categoryId IS NULL OR oi.product.category.id = :categoryId) " +
-            "AND (:startDate IS NULL OR oi.order.orderDate BETWEEN :startDate AND :endDate) " +
+            "AND (:startDateTime IS NULL OR oi.order.orderDate BETWEEN :startDateTime AND :endDateTime) " +
             "AND (:search IS NULL OR LOWER(oi.product.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "GROUP BY oi.product.id, oi.product.name, oi.pricePerUnit, oi.product.imageName " +
             "ORDER BY oi.product.name ASC, MAX(oi.order.orderDate) DESC")
     Page<ProductOrderQuantityDTO> getTotalOrdersForProducts(
             @Param("brandId") Long brandId,
             @Param("categoryId") Long categoryId,
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime,
             @Param("search") String search,
             Pageable pageable
     );
