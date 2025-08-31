@@ -48,61 +48,28 @@ public class ReturnProcessorService {
     public boolean simulateCardRefund(CardRefundRequestDTO dto) {
         log.info("Simulating card refund for invoice: {}", dto.getInvoiceNumber());
 
-        Invoice invoice = invoiceRepository.findByInvoiceNumber(dto.getInvoiceNumber())
-                .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+        // Find the existing RequestReturn by invoiceNumber
+        RequestReturn requestReturn = requestReturnRepository
+                .findTopByInvoice_InvoiceNumberOrderByCreatedAtDesc(dto.getInvoiceNumber())
+                .orElseThrow(() -> new EntityNotFoundException("Refund request not found"));
 
-        double totalRefundAmount = 0.0;
-        List<ReturnItem> returnItems = new ArrayList<>();
-
-        for (ReturnedItemDTO itemDTO : dto.getItems()) {
-            Product product = productRepository.findById(itemDTO.getItemId())
-                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-            InvoiceItem invoiceItem = invoiceItemRepository
-                    .findByInvoiceNumberAndProductId(invoice.getInvoiceNumber(), product.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Invoice item not found"));
-
-            double refundAmount = itemDTO.getQuantity() * itemDTO.getUnitPrice();
-
-            ReturnItem returnItem = new ReturnItem();
-            returnItem.setInvoiceItem(invoiceItem);
-            returnItem.setProduct(product);
-            returnItem.setQuantity(itemDTO.getQuantity());
-            returnItem.setRefundAmount(refundAmount);
-            returnItem.setPhotoPath(itemDTO.getPhotoPath());
-            returnItem.setReason(itemDTO.getReason());
-            returnItems.add(returnItem);
-
-            totalRefundAmount += refundAmount;
-        }
-
-        RequestReturn requestReturn = new RequestReturn();
-        requestReturn.setInvoice(invoice);
-        requestReturn.setItems(returnItems);
-        requestReturn.setRefundMethod("Card");
-        requestReturn.setStatus(RequestStatus.COMPLETED);
-        requestReturn.setCreatedAt(LocalDateTime.now());
-        requestReturn.setTotalRefundAmount(totalRefundAmount);
-
-        for (ReturnItem item : returnItems) {
-            item.setRequestReturn(requestReturn);
-        }
-
+        // Update status and refund method
+        requestReturn.setRefundMethod("CARD");
+        requestReturn.setStatus(RequestStatus.APPROVED); // Let processApprovedRefund set to COMPLETED
         requestReturnRepository.save(requestReturn);
-        returnItemRepository.saveAll(returnItems);
 
+        // Save CardRefundRecord
         CardRefundRecord record = new CardRefundRecord();
         record.setInvoiceNumber(dto.getInvoiceNumber());
-        record.setAmount(totalRefundAmount);
+        record.setAmount(dto.getTotalAmount());
         record.setAccountHolderName(dto.getAccountHolderName());
         record.setBankName(dto.getBankName());
         record.setAccountNumber(dto.getAccountNumber());
         record.setCreatedAt(LocalDateTime.now());
-        record.setStatus("SUCCESS");
-
+        record.setStatus("COMPLETED");
         cardRefundRecordRepository.save(record);
 
-        // ✅ Use proxy to invoke transactional method
+        // Let processApprovedRefund handle the rest
         context.getBean(ReturnProcessorService.class).processApprovedRefund(requestReturn.getId());
         return true;
     }
@@ -160,8 +127,11 @@ public class ReturnProcessorService {
         if (request.getStatus() != RequestStatus.APPROVED && request.getStatus() != RequestStatus.COMPLETED) {
             throw new IllegalStateException("Refund request must be APPROVED or COMPLETED to process.");
         }
-
         String method = request.getRefundMethod();
+        if (method == null || method.equalsIgnoreCase("Pending")) {
+            // If method is not set, set it to CARD (or whatever is appropriate)
+            request.setRefundMethod("CARD");
+        }
         Invoice invoice = request.getInvoice();
         double totalRefundAmount = 0.0;
 
